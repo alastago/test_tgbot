@@ -1,165 +1,232 @@
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
+from states import *
+from keyboards import *
+from database import *
+from config import TOKEN
 
-from db import (
-    add_user, get_user,
-    create_team, team_exists,
-    create_game, get_games,
-    register_to_game
-)
-
-API_TOKEN = "7666485376:AAGLUa58hLcVzu99yOJSHAzYPalRno98pTA"
-ADMIN_ID = 441329526  # ← Укажите ваш ID
-
-bot = Bot(token=API_TOKEN)
+bot = Bot(TOKEN)
 dp = Dispatcher()
 
+init_db()   # создаём базу при запуске
+
 
 # --------------------------
-# ГЛАВНОЕ МЕНЮ
+# START
 # --------------------------
-def main_menu(is_admin=False):
-    kb = InlineKeyboardBuilder()
+@dp.message(CommandStart())
+async def start(message: types.Message):
+    conn = get_db()
+    cur = conn.cursor()
 
-    kb.button(text="🆕 Создать команду", callback_data="create_team_btn")
-    kb.button(text="🕹 Записаться на игру", callback_data="join_game_btn")
+    # Если игрока нет — добавляем
+    cur.execute("SELECT * FROM players WHERE user_id=?", (message.from_user.id,))
+    row = cur.fetchone()
+    if not row:
+        cur.execute("INSERT INTO players (user_id, username, team_id) VALUES (?, ?, ?)",
+                    (message.from_user.id, message.from_user.username, None))
+        conn.commit()
 
-    if is_admin:
-        kb.button(text="🛠 Админ-панель", callback_data="admin_panel")
-
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    add_user(message.from_user.id, message.from_user.full_name)
-
-    is_admin = message.from_user.id == ADMIN_ID
-    await message.answer(
-        "Добро пожаловать! Выберите действие:",
-        reply_markup=main_menu(is_admin)
-    )
+    await message.answer("Привет! Выберите действие:", reply_markup=main_menu())
 
 
 # --------------------------
 # СОЗДАНИЕ КОМАНДЫ
 # --------------------------
-@dp.callback_query(F.data == "create_team_btn")
-async def ask_team_name(callback: types.CallbackQuery):
+@dp.callback_query(F.data == "create_team")
+async def ask_team_name(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите название команды:")
+    await state.set_state(CreateTeam.name)
     await callback.answer()
-    dp.workflow_data[callback.from_user.id] = "await_team_name"
 
 
-@dp.message(F.text)
-async def create_team_handler(message: types.Message):
-    user_state = dp.workflow_data.get(message.from_user.id)
+@dp.message(CreateTeam.name)
+async def team_email(message: types.Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await message.answer("Введите email команды:")
+    await state.set_state(CreateTeam.email)
 
-    if user_state == "await_team_name":
-        team_name = message.text
 
-        if team_exists(team_name):
-            return await message.answer("Команда с таким названием уже существует.")
+@dp.message(CreateTeam.email)
+async def finish_team(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    name = data["name"]
+    email = message.text
 
-        create_team(message.from_user.id, team_name)
-        dp.workflow_data[message.from_user.id] = None
+    conn = get_db()
+    cur = conn.cursor()
 
-        return await message.answer(f"Команда **{team_name}** создана!")
+    # создаём команду
+    cur.execute("INSERT INTO teams (name, email, captain_id) VALUES (?, ?, ?)",
+                (name, email, message.from_user.id))
+    conn.commit()
 
+    # игрок = капитан
+    cur.execute("UPDATE players SET team_id=(SELECT id FROM teams WHERE name=?) WHERE user_id=?",
+                (name, message.from_user.id))
+    conn.commit()
+
+    await message.answer(f"Команда '{name}' создана!", reply_markup=main_menu())
+    await state.clear()
 
 
 # --------------------------
-# ЗАПИСАТЬСЯ НА ИГРУ
+# ВСТУПЛЕНИЕ В КОМАНДУ
 # --------------------------
-@dp.callback_query(F.data == "join_game_btn")
-async def choose_game(callback: types.CallbackQuery):
-    games = get_games()
+@dp.callback_query(F.data == "join_team")
+async def join_team(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите название команды для вступления:")
+    await state.set_state(JoinTeam.name)
+    await callback.answer()
+
+
+@dp.message(JoinTeam.name)
+async def join_team_finish(message: types.Message, state: FSMContext):
+    team = message.text
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM teams WHERE name=?", (team,))
+    row = cur.fetchone()
+
+    if not row:
+        await message.answer("Команды не существует.")
+        return
+
+    cur.execute("UPDATE players SET team_id=? WHERE user_id=?", (row["id"], message.from_user.id))
+    conn.commit()
+
+    await message.answer(f"Вы вступили в команду {team}", reply_markup=main_menu())
+    await state.clear()
+
+
+# --------------------------
+# ИГРЫ
+# --------------------------
+@dp.callback_query(F.data == "games")
+async def games_menu_show(callback: types.CallbackQuery):
+    await callback.message.answer("Меню игр:", reply_markup=games_menu())
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "list_games")
+async def list_games(callback: types.CallbackQuery):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM games")
+    games = cur.fetchall()
 
     if not games:
-        return await callback.message.answer("Нет доступных игр!")
+        await callback.message.answer("Нет игр.")
+    else:
+        text = "\n".join([f"{g['id']}. {g['title']} — {g['date']}" for g in games])
+        await callback.message.answer("Игры:\n" + text)
 
-    kb = InlineKeyboardBuilder()
-    for game_id, title in games:
-        kb.button(text=title, callback_data=f"join_{game_id}")
-    kb.adjust(1)
-
-    await callback.message.answer("Выберите игру:", reply_markup=kb.as_markup())
     await callback.answer()
-
-
-@dp.callback_query(F.data.startswith("join_"))
-async def join_game(callback: types.CallbackQuery):
-    game_id = int(callback.data.split("_")[1])
-    register_to_game(callback.from_user.id, game_id)
-    await callback.message.answer("Вы успешно записались на игру!")
-    await callback.answer()
-
 
 
 # --------------------------
-# АДМИН-ПАНЕЛЬ
+# Запись команды на игру
 # --------------------------
-def admin_menu():
-    kb = InlineKeyboardBuilder()
-    kb.button(text="➕ Добавить игру", callback_data="admin_add_game")
-    kb.button(text="📄 Список игр", callback_data="admin_list_games")
-    kb.adjust(1)
-    return kb.as_markup()
+@dp.callback_query(F.data == "team_reg_game")
+async def team_choose_game(callback: types.CallbackQuery, state: FSMContext):
+    conn = get_db()
+    cur = conn.cursor()
 
+    # проверяем наличие команды
+    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
+    t = cur.fetchone()
+    if not t or not t["team_id"]:
+        await callback.message.answer("Вы не в команде.")
+        return
 
-@dp.callback_query(F.data == "admin_panel")
-async def open_admin_panel(callback: types.CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        return await callback.answer("Нет доступа", show_alert=True)
+    # список игр
+    cur.execute("SELECT * FROM games")
+    games = cur.fetchall()
 
-    await callback.message.answer("🛠 Админ-панель:", reply_markup=admin_menu())
+    kb = [
+        [types.InlineKeyboardButton(text=f"{g['title']}", callback_data=f"team_game_{g['id']}")]
+        for g in games
+    ]
+    await callback.message.answer("Выберите игру:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb))
     await callback.answer()
 
 
-# ---- Добавление игры ----
-@dp.callback_query(F.data == "admin_add_game")
-async def admin_add_game(callback: types.CallbackQuery):
-    dp.workflow_data[callback.from_user.id] = "await_game_title"
-    await callback.message.answer("Введите название новой игры:")
+@dp.callback_query(F.data.startswith("team_game_"))
+async def register_team(callback: types.CallbackQuery):
+    game_id = int(callback.data.split("_")[2])
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
+    team = cur.fetchone()["team_id"]
+
+    cur.execute("INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)", (team, game_id))
+    conn.commit()
+
+    await callback.message.answer("Команда записана!")
     await callback.answer()
 
 
-@dp.message(F.text)
-async def add_game_handler(message: types.Message):
-    user_state = dp.workflow_data.get(message.from_user.id)
+# --------------------------
+# Игрок записывается на игру
+# --------------------------
+@dp.callback_query(F.data == "player_reg_game")
+async def player_choose_game(callback: types.CallbackQuery):
+    conn = get_db()
+    cur = conn.cursor()
 
-    if user_state == "await_game_title":
-        title = message.text
-        create_game(title)
-        dp.workflow_data[message.from_user.id] = None
-        return await message.answer(f"Игра '{title}' успешно добавлена!")
+    # находим команду игрока
+    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
+    t = cur.fetchone()["team_id"]
 
+    if not t:
+        await callback.message.answer("Вы не в команде.")
+        return
 
-# ---- Список игр ----
-@dp.callback_query(F.data == "admin_list_games")
-async def admin_list_games(callback: types.CallbackQuery):
-    games = get_games()
+    # игры, куда записана команда
+    cur.execute("""
+        SELECT g.id, g.title FROM games g
+        JOIN team_games tg ON tg.game_id = g.id
+        WHERE tg.team_id=?
+    """, (t,))
+    games = cur.fetchall()
 
     if not games:
-        return await callback.message.answer("Игр пока нет.")
+        await callback.message.answer("Ваша команда не записана ни на одну игру.")
+        return
 
-    text = "📄 *Список игр:*\n\n"
-    for game_id, title in games:
-        text += f"• {game_id}: {title}\n"
+    kb = [
+        [types.InlineKeyboardButton(text=g['title'], callback_data=f"player_game_{g['id']}")]
+        for g in games
+    ]
 
-    await callback.message.answer(text, parse_mode="Markdown")
+    await callback.message.answer("Выберите игру:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb))
     await callback.answer()
 
 
+@dp.callback_query(F.data.startswith("player_game_"))
+async def register_player(callback: types.CallbackQuery):
+    game_id = int(callback.data.split("_")[2])
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("INSERT OR IGNORE INTO player_games (user_id, game_id) VALUES (?, ?)",
+                (callback.from_user.id, game_id))
+    conn.commit()
+
+    await callback.message.answer("Вы записаны!")
+    await callback.answer()
+
 
 # --------------------------
-# MAIN
+# RUN
 # --------------------------
 async def main():
-    dp.workflow_data = {}  # простое хранилище состояний
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
