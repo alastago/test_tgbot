@@ -1,97 +1,54 @@
 import sqlite3
-import os
-
-DB_PATH = os.path.join("data", "database.db")
-
 
 def get_db():
-    os.makedirs("data", exist_ok=True)
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tg_id INTEGER UNIQUE,
-            name TEXT
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            captain_tg_id INTEGER,
-            team_name TEXT
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS games (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS players (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tg_id INTEGER,
-            game_id INTEGER
-        )
-    """)
-
+    conn = sqlite3.connect("bot.db")
+    conn.row_factory = sqlite3.Row
     return conn
 
-
-# -----------------------
-# USERS
-# -----------------------
-def add_user(tg_id, name):
+def init_db():
     conn = get_db()
-    conn.execute("INSERT OR IGNORE INTO users (tg_id, name) VALUES (?, ?)", (tg_id, name))
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS players (
+        user_id INTEGER PRIMARY KEY,
+        username TEXT,
+        team_id INTEGER
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS teams (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        email TEXT,
+        captain_id INTEGER
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS games (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        date TEXT
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS team_games (
+        team_id INTEGER,
+        game_id INTEGER,
+        PRIMARY KEY (team_id, game_id)
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS player_games (
+        user_id INTEGER,
+        game_id INTEGER,
+        PRIMARY KEY (user_id, game_id)
+    );
+    """)
+
     conn.commit()
-
-def get_user(tg_id):
-    conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
-    return cur.fetchone()
-
-
-
-# -----------------------
-# TEAMS
-# -----------------------
-def create_team(captain_tg_id, team_name):
-    conn = get_db()
-    conn.execute("INSERT INTO teams (captain_tg_id, team_name) VALUES (?, ?)", 
-                 (captain_tg_id, team_name))
-    conn.commit()
-
-def team_exists(team_name):
-    conn = get_db()
-    cur = conn.execute("SELECT * FROM teams WHERE team_name = ?", (team_name,))
-    return cur.fetchone()
-
-
-
-# -----------------------
-# GAMES
-# -----------------------
-def create_game(title):
-    conn = get_db()
-    conn.execute("INSERT INTO games (title) VALUES (?)", (title,))
-    conn.commit()
-
-def get_games():
-    conn = get_db()
-    cur = conn.execute("SELECT * FROM games")
-    return cur.fetchall()
-
-
-
-# -----------------------
-# PLAYERS REGISTRATION
-# -----------------------
-def register_to_game(tg_id, game_id):
-    conn = get_db()
-    conn.execute("INSERT INTO players (tg_id, game_id) VALUES (?, ?)", (tg_id, game_id))
-    conn.commit()
+    conn.close()
