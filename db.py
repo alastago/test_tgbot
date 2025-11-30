@@ -4,7 +4,7 @@ def get_db():
     conn = sqlite3.connect("database.db")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             tg_id INTEGER UNIQUE,
             name TEXT
         )
@@ -18,5 +18,5 @@ def add_user(tg_id, name):
 
 def get_user(tg_id):
     conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
-    return cur.fetchone()
+    cursor = conn.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
+    return cursor.fetchone()
