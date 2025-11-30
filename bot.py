@@ -1,27 +1,29 @@
-import logging
-from aiogram import Bot, Dispatcher, executor, types
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 from db import add_user, get_user
 
-API_TOKEN = "7666485376:AAGLUa58hLcVzu99yOJSHAzYPalRno98pTA"
-
-logging.basicConfig(level=logging.INFO)
+API_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
-@dp.message_handler(commands=['start'])
-async def start(message: types.Message):
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
     add_user(message.from_user.id, message.from_user.full_name)
-    await message.answer(f"Привет, {message.from_user.full_name}! Ты добавлен в базу данных.")
+    await message.answer(f"Привет, {message.from_user.full_name}! Ты добавлен в базу.")
 
-@dp.message_handler(commands=['me'])
-async def me(message: types.Message):
+@dp.message(Command("me"))
+async def cmd_me(message: types.Message):
     user = get_user(message.from_user.id)
     if user:
         _, tg_id, name = user
-        await message.answer(f"Ты есть в базе.\nID: {tg_id}\nИмя: {name}")
+        await message.answer(f"Ты в базе:\nID: {tg_id}\nИмя: {name}")
     else:
-        await message.answer("Тебя нет в базе. Отправь /start")
+        await message.answer("Тебя нет в базе. Нажми /start")
 
-if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
