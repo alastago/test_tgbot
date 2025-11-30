@@ -1,7 +1,14 @@
 import sqlite3
+import os
+
+# путь к базе в подпапке data
+DB_PATH = os.path.join("data", "database.db")
 
 def get_db():
-    conn = sqlite3.connect("database.db")
+    # если папки data нет — создадим
+    os.makedirs("data", exist_ok=True)
+
+    conn = sqlite3.connect(DB_PATH)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
