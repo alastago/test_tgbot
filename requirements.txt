@@ -1,1 +1,1 @@
-aiogram==3.*.*
+aiogram==3.4.1
