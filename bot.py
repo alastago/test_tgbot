@@ -3,7 +3,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from db import add_user, get_user
 
-API_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"
+API_TOKEN = "7666485376:AAGLUa58hLcVzu99yOJSHAzYPalRno98pTA"
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
