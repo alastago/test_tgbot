@@ -142,6 +142,7 @@ def insert_games_bulk(games: list):
         insert_data = []
         for g in games:
             try:
+                now = datetime.now().isoformat(sep=' ', timespec='milliseconds')
                 item = (
                     int(g.get("id")),
                     g.get("date"),
@@ -149,7 +150,7 @@ def insert_games_bulk(games: list):
                     g.get("bar"),
                     g.get("price"),
                     g.get("url"),
-                    datetime.now().isoformat()
+                    now
                 )
                 insert_data.append(item)
             except Exception as e:
