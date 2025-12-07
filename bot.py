@@ -47,8 +47,6 @@ async def run_parser(callback: types.CallbackQuery):
     if not newgames:
         await callback.message.answer("❗ Игр не найдено.")
         return
-
-    await insert_games_bulk(newgames)
     
     text = "🔎 Найденные игры:\n\n"
     for g in newgames[:10]:
@@ -60,8 +58,10 @@ async def run_parser(callback: types.CallbackQuery):
             f"💰 {g['price']}\n"
             f"🔗 {g['url']}\n\n"
         )
-
     await callback.message.answer(text, parse_mode=ParseMode.HTML)
+    
+    await insert_games_bulk(newgames)
+    
 
 # --------------------------
 # СОЗДАНИЕ КОМАНДЫ
