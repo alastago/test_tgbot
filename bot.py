@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from parser import fetch_games
 from states import *
 from keyboards import *
-from data.database import *
+from dataset.database import *
 from config import TOKEN
 
 bot = Bot(TOKEN)
