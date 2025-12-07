@@ -51,7 +51,7 @@ async def run_parser(callback: types.CallbackQuery):
         
     text = "🔎 Найденные игры:\n\n"
 
-    for g in games[:10]:
+    for g in newgames[:10]:
         text += (
             f"🎮 <b>{g.get('title', '—')}</b>\n"
             f"📅 <b>{g.get('date', '—')}</b>\n"
