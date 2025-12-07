@@ -2,8 +2,8 @@
 
 GAME_SCHEMA = {
     "id": str,        # уникальный id игры (из div id)
-    "title": str,     # название игры
     "date": str,      # дата игры
+    "title": str,     # название игры
     "bar": str,       # место проведения
     "price": str,     # цена
     "url": str        # ссылка на игру
