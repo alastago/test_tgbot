@@ -1,7 +1,7 @@
 # parser.py
 
 import aiohttp
-from bs4 import BeautifulSoup
+from lxml import html
 from config import SCHEDULE_URL
 
 URL = SCHEDULE_URL
@@ -9,37 +9,45 @@ URL = SCHEDULE_URL
 async def fetch_games():
     async with aiohttp.ClientSession() as session:
         async with session.get(URL) as response:
-            html = await response.text()
+            page = await response.text()
 
-    soup = BeautifulSoup(html, "html.parser")
+    tree = html.fromstring(page)
 
-    game_blocks = soup.find_all("div", class_="schedule-column")
+    # Каждый блок игры — div.schedule-column
+    game_blocks = tree.xpath('//div[contains(@class, "schedule-column")]')
 
     games = []
 
     for g in game_blocks:
-        game_id = g.get("id", "")
+        game_id = g.attrib.get("id", "")
 
-        title_el = g.find("div", class_="game-title")
-        title = title_el.get_text(strip=True) if title_el else None
+        # Название игры
+        title = g.xpath('.//div[contains(@class, "game-title")]/text()')
+        title = title[0].strip() if title else None
 
-        date_el = g.find("div", class_="game-date")
-        date = date_el.get_text(strip=True) if date_el else None
+        # Дата
+        date = g.xpath('.//div[contains(@class, "game-date")]/text()')
+        date = date[0].strip() if date else None
 
-        bar_el = g.find("div", class_="game-bar-title")
-        bar = bar_el.get_text(strip=True) if bar_el else None
+        # Бар
+        bar = g.xpath('.//div[contains(@class, "game-bar-title")]/text()')
+        bar = bar[0].strip() if bar else None
 
-        price_el = g.find("div", class_="game-price")
-        price = price_el.get_text(strip=True) if price_el else None
+        # Цена
+        price = g.xpath('.//div[contains(@class, "game-price")]/text()')
+        price = price[0].strip() if price else None
 
-        type_el = g.find("div", class_="game-type")
-        game_type = type_el.get_text(strip=True) if type_el else None
+        # Тип
+        game_type = g.xpath('.//div[contains(@class, "game-type")]/text()')
+        game_type = game_type[0].strip() if game_type else None
 
-        img_el = g.find("img")
-        img = img_el["src"] if img_el else None
+        # Картинка
+        img = g.xpath('.//img/@src')
+        img = img[0] if img else None
 
-        link_el = g.find("a")
-        link = "https://quizplease.ru" + link_el["href"] if link_el else None
+        # Ссылка
+        link = g.xpath('.//a/@href')
+        link = "https://quizplease.ru" + link[0] if link else None
 
         games.append({
             "id": game_id,
@@ -53,4 +61,3 @@ async def fetch_games():
         })
 
     return games
-
