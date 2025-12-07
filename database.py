@@ -23,10 +23,10 @@ def init_db():
         name TEXT UNIQUE,
         email TEXT,
         phone TEXT,
-        captainName TEXT, 
+        captainName TEXT,
         captain_id INTEGER
     );
-    """)
+    """) 
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS games (
