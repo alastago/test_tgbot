@@ -117,31 +117,65 @@ def filter_new_games(parsed_games: list) -> list:
 # ==========================
 
 def insert_games_bulk(games: list):
+    log("insert_games_bulk() called")
+
     if not games:
+        log("No games to insert — exiting")
         return
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+    log(f"Trying to insert {len(games)} games")
+    log(f"DB_PATH = {DB_PATH}")
 
-    insert_data = [
-        (
-            int(g.get("id")),
-            g.get("date"),
-            g.get("title"),
-            g.get("bar"),
-            g.get("price"),
-            g.get("url"),
-            datetime.now().isoformat()
-        )
-        for g in games
-    ]
+    # Проверяем что файл базы есть
+    import os
+    log(f"DB file exists: {os.path.exists(DB_PATH)}")
 
-    cur.executemany("""
-        INSERT INTO games (id, date, title, bar, price, url, added_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, insert_data)
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        # Логируем структуру таблицы games
+        cur.execute("PRAGMA table_info(games)")
+        table_info = cur.fetchall()
+        log(f"Table structure: {table_info}")
 
-    log(f"Inserted {len(games)} games")
+        insert_data = []
+        for g in games:
+            try:
+                item = (
+                    int(g.get("id")),
+                    g.get("date"),
+                    g.get("title"),
+                    g.get("bar"),
+                    g.get("price"),
+                    g.get("url"),
+                    datetime.now().isoformat()
+                )
+                insert_data.append(item)
+            except Exception as e:
+                log(f"Error preparing game for insert: {g}, error: {e}")
+
+        log(f"Prepared {len(insert_data)} rows for insert")
+        if insert_data:
+            log(f"Sample row: {insert_data[0]}")
+
+        # Выполнение запроса
+        cur.executemany("""
+            INSERT INTO games (id, date, title, bar, price, url, added_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, insert_data)
+
+        conn.commit()
+        log(f"Successfully inserted {len(insert_data)} games into DB")
+
+    except sqlite3.Error as e:
+        log(f"SQLite error during insert_games_bulk: {e}")
+
+    except Exception as e:
+        log(f"Unexpected error in insert_games_bulk: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+            log("DB connection closed")
