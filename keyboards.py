@@ -4,6 +4,7 @@ def main_menu():
     kb = [
         [InlineKeyboardButton(text="Создать команду", callback_data="create_team")],
         [InlineKeyboardButton(text="Вступить в команду", callback_data="join_team")],
+        [InlineKeyboardButton(text="🔍 Запустить парсер", callback_data="run_parser")],
         [InlineKeyboardButton(text="Игры", callback_data="games")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
