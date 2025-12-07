@@ -67,8 +67,21 @@ class GamesParser(HTMLParser):
                     self.current_field = "bar"
                 elif "price" in cls:
                     self.current_field = "price"
+                elif "techtext" in cls:
+                    # В блоке techtext смотрим текущую иконку
+                    if self._current_icon == "time-halfwhite":
+                        self.current_field = "time"
+                    else:
+                        self.current_field = None
                 else:
                     self.current_field = None
+                    
+            if tag == "img" and "class" in attrs:
+            if "time-halfwhite" in attrs["class"]:
+                self._current_icon = "time-halfwhite"
+            else:
+                self._current_icon = None    
+                
             if tag == "a" and "href" in attrs:
                 href = attrs["href"]
                 # не посещаем /game-page (Disallow)
@@ -81,6 +94,18 @@ class GamesParser(HTMLParser):
             if self._div_stack <= 0:
                 self.in_game = False
                 if "title" in self.current_game:
+                    # Объединяем дату и время
+                    date_str = self.current_game.get("date", "").strip()
+                    time_str = self.current_game.get("time", "").strip()
+                    if date_str:
+                        try:
+                            # формируем ISO строку
+                            dt_obj = datetime.strptime(date_str + " " + time_str, "%d %B, %A %H:%M")
+                            self.current_game["datetime"] = dt_obj.isoformat(timespec='minutes')
+                        except Exception as e:
+                            log(f"Failed to parse datetime for game {self.current_game.get('id')}: {e}")
+                            self.current_game["datetime"] = None
+                            
                     self.games.append(self.current_game)
                     log(f"Saved game: {self.current_game.get('title')}")
                    
