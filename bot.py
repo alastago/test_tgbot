@@ -48,7 +48,7 @@ async def run_parser(callback: types.CallbackQuery):
         await callback.message.answer("❗ Игр не найдено.")
         return
 
-    insert_games_bulk(newgames)
+    await insert_games_bulk(newgames)
     
     text = "🔎 Найденные игры:\n\n"
     for g in newgames[:10]:
