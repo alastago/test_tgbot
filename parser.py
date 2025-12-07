@@ -61,9 +61,9 @@ class GamesParser(HTMLParser):
                 cls = attrs["class"]
                 if "h2-game-card" in cls:
                     self.current_field = "title"
-                elif "h3" in cls and "date" not in self.current_game:
+                elif "block-date-with-language-game" in cls and "date" not in self.current_game:
                     self.current_field = "date"
-                elif "schedule-block-info-bar" in cls:
+                elif "schedule-block-info-bar" in cls or "techtext techtext-halfwhite" in cls:
                     self.current_field = "bar"
                 elif "price" in cls:
                     self.current_field = "price"
@@ -101,6 +101,9 @@ class GamesParser(HTMLParser):
         if self.in_game and self.current_field:
             text = data.strip()
             if text:
+                if self.current_field = "bar":
+                    text.replace("Информация о площадке","")
+                    text.replace("Где это?","")
                 prev = self.current_game.get(self.current_field)
                 self.current_game[self.current_field] = prev + " " + text if prev else text
 
