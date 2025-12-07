@@ -2,6 +2,9 @@ import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart
+from aiogram.enums import ParseMode
+from parser import fetch_games
+
 from states import *
 from keyboards import *
 from database import *
