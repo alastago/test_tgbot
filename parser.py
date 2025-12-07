@@ -1,16 +1,17 @@
 # parser.py
 
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 from config import SCHEDULE_URL
 
 URL = SCHEDULE_URL
 
-def fetch_games():
-    response = requests.get(URL, timeout=10)
-    response.raise_for_status()
+async def fetch_games():
+    async with aiohttp.ClientSession() as session:
+        async with session.get(URL) as response:
+            html = await response.text()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
 
     game_blocks = soup.find_all("div", class_="schedule-column")
 
