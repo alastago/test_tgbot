@@ -77,10 +77,10 @@ class GamesParser(HTMLParser):
                     self.current_field = None
                     
             if tag == "img" and "class" in attrs:
-            if "time-halfwhite" in attrs["class"]:
-                self._current_icon = "time-halfwhite"
-            else:
-                self._current_icon = None    
+                if "time-halfwhite" in attrs["class"]:
+                    self._current_icon = "time-halfwhite"
+                else:
+                    self._current_icon = None    
                 
             if tag == "a" and "href" in attrs:
                 href = attrs["href"]
