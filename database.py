@@ -7,15 +7,11 @@ def log(text: str):
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[DB {ts}] {text}\n")
     
-    conn.commit()
-    conn.close()
-    log("DB initialized")
-    
 # ==========================
 # ИНИЦИАЛИЗАЦИЯ БАЗЫ
 # ==========================
 def get_db():
-    conn = sqlite3.connect("bot.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -65,7 +61,10 @@ def init_db():
         PRIMARY KEY (user_id, game_id)
     );
     """)
-
+    conn.commit()
+    conn.close()
+    log("DB initialized")
+    
 # ==========================
 # ФУНКЦИЯ: получить ID существующих игр
 # ==========================
