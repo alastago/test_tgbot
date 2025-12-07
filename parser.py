@@ -1,16 +1,18 @@
-
 # parser.py
 
 import aiohttp
 from html.parser import HTMLParser
+import traceback
+from datetime import datetime
 
-# parser.py
+from config import SCHEDULE_URL, LOGFILE, HTML_DUMP
 
-import aiohttp
-from html.parser import HTMLParser
-from config import SCHEDULE_URL
 
-URL = SCHEDULE_URL
+def log(text: str):
+    """Пишем лог в /tmp/parser_quizplease.log"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOGFILE, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {text}\n")
 
 
 class GamesParser(HTMLParser):
@@ -28,37 +30,35 @@ class GamesParser(HTMLParser):
         if tag == "div" and "class" in attrs and "schedule-column" in attrs["class"]:
             self.in_game = True
             self.current_game = {"id": attrs.get("id")}
+            log(f"Найдена игра id={attrs.get('id')}")
 
         if not self.in_game:
             return
 
-        # Название игры
         if tag == "div" and "class" in attrs:
-            class_str = attrs["class"]
+            cls = attrs["class"]
 
-            if "h2-game-card" in class_str:
+            if "h2-game-card" in cls:
                 self.current_field = "title"
 
-            elif "h3-mb10" in class_str or "h3-green" in class_str:
+            elif "h3" in cls and "date" not in self.current_game:
                 self.current_field = "date"
 
-            elif "schedule-block-info-bar" in class_str:
+            elif "schedule-block-info-bar" in cls:
                 self.current_field = "bar"
 
-            elif "price" in class_str:
+            elif "price" in cls:
                 self.current_field = "price"
 
-        # Ссылка на игру:
         if tag == "a" and "href" in attrs:
             if attrs["href"].startswith("/game-page"):
                 self.current_game["url"] = "https://quizplease.ru" + attrs["href"]
 
     def handle_endtag(self, tag):
-        # Конец блока игры
         if self.in_game and tag == "div":
-            # Если игра заполнена — сохраняем
             if "title" in self.current_game:
                 self.games.append(self.current_game)
+                log(f"Игра записана: {self.current_game}")
 
         self.current_field = None
 
@@ -67,19 +67,33 @@ class GamesParser(HTMLParser):
             return
 
         text = data.strip()
-        if not text:
-            return
-
-        # Записываем значение
-        self.current_game[self.current_field] = text
+        if text:
+            self.current_game[self.current_field] = text
 
 
 async def fetch_games():
-    async with aiohttp.ClientSession() as session:
-        async with session.get(URL) as response:
-            html = await response.text()
+    log("Старт парсера")
 
-    parser = GamesParser()
-    parser.feed(html)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(SCHEDULE_URL, timeout=30) as response:
+                html = await response.text()
 
-    return parser.games
+        # Дамп HTML в файл
+        with open(HTML_DUMP, "w", encoding="utf-8") as f:
+            f.write(html)
+
+        log("HTML сохранён в дамп")
+        log(f"Размер HTML: {len(html)} символов")
+
+        parser = GamesParser()
+        parser.feed(html)
+
+        log(f"Парсер завершён. Найдено игр: {len(parser.games)}")
+
+        return parser.games
+
+    except Exception as e:
+        error_msg = f"Ошибка парсера: {e}\n{traceback.format_exc()}"
+        log(error_msg)
+        return []
