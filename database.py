@@ -22,6 +22,8 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         email TEXT,
+        phone TEXT,
+        captainName TEXT, 
         captain_id INTEGER
     );
     """)
