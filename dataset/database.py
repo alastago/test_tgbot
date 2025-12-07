@@ -46,7 +46,7 @@ def init_db():
         bar TEXT,
         price TEXT,
         url TEXT,
-        added_at TEXT
+        added_at DATETIME
     );
     """)
 
