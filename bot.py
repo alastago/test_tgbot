@@ -3,8 +3,8 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart
 from aiogram.enums import ParseMode
-from parser import fetch_games
 
+from parser import fetch_games
 from states import *
 from keyboards import *
 from database import *
@@ -42,7 +42,7 @@ async def start(message: types.Message):
 async def run_parser(callback: types.CallbackQuery):
     await callback.answer("Запускаю парсер...")
 
-    games = fetch_games()
+    games = await fetch_games()
 
     if not games:
         await callback.message.answer("❗ Игр не найдено.")
@@ -50,7 +50,7 @@ async def run_parser(callback: types.CallbackQuery):
 
     text = "🔎 Найденные игры:\n\n"
 
-    for g in games[:10]:  # первые 10, чтобы не спамить
+    for g in games[:10]:
         text += (
             f"🎮 <b>{g['title']}</b>\n"
             f"📅 {g['date']}\n"
