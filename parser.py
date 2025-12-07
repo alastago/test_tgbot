@@ -101,7 +101,7 @@ class GamesParser(HTMLParser):
         if self.in_game and self.current_field:
             text = data.strip()
             if text:
-                if self.current_field = "bar":
+                if self.current_field == "bar":
                     text.replace("Информация о площадке","")
                     text.replace("Где это?","")
                 prev = self.current_game.get(self.current_field)
