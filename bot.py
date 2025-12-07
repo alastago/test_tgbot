@@ -43,15 +43,16 @@ async def run_parser(callback: types.CallbackQuery):
     await callback.answer("Запускаю парсер...")
 
     games = await fetch_games()
-
-    if not games:
+    newgames = await filter_new_games(games)
+    if not newgames:
         await callback.message.answer("❗ Игр не найдено.")
         return
 
     text = "🔎 Найденные игры:\n\n"
 
-    for g in games[:10]:
+    for g in newgames[:10]:
         text += (
+            f"<b>{g['id']}</b>\n"
             f"🎮 <b>{g['title']}</b>\n"
             f"📅 {g['date']}\n"
             f"📍 {g['bar']}\n"
