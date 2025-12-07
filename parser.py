@@ -7,7 +7,7 @@ import time
 from html.parser import HTMLParser
 from datetime import datetime
 from config import SCHEDULE_URL, HTML_DUMP, LOGFILE
-from data.game_schema import validate_game
+from dataset.game_schema import validate_game
 
 # =========================
 # Заголовки как в браузере
