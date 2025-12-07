@@ -51,6 +51,7 @@ async def run_parser(callback: types.CallbackQuery):
         return    
         
     text = "🔎 Найденные игры:\n\n"
+    await callback.message.answer(text, parse_mode=ParseMode.HTML)
     for g in games[:10]:
         text += (
             f"<b>{g.get('id', '—')}</b>\n"
@@ -60,7 +61,8 @@ async def run_parser(callback: types.CallbackQuery):
             f"💰 {g.get('price', '—')}</b>\n"
             f"🔗 {g.get('url', '—')}</b>\n\n"
         )
-
+        await callback.message.answer(text, parse_mode=ParseMode.HTML)
+        
     await callback.message.answer(text, parse_mode=ParseMode.HTML)
     await insert_games_bulk(newgames)
     
