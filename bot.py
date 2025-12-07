@@ -54,7 +54,6 @@ async def run_parser(callback: types.CallbackQuery):
     await callback.message.answer(text, parse_mode=ParseMode.HTML)
     for g in games[:10]:
         text += (
-            f"<b>{g.get('id', '—')}</b>\n"
             f"🎮 <b>{g.get('title', '—')}</b>\n"
             f"📅 {g.get('date', '—')}</b>\n"
             f"📍 {g.get('bar', '—')}</b>\n"
