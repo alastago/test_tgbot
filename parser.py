@@ -37,6 +37,7 @@ def looks_like_bot_block(html: str) -> bool:
     return any(ch in lower for ch in checks)
 
 class GamesParser(HTMLParser):
+    
     def __init__(self):
         super().__init__()
         self.games = []
@@ -44,9 +45,15 @@ class GamesParser(HTMLParser):
         self.current_game = {}
         self.current_field = None
         self._div_stack = 0
-
+        self._skip_text = False
+        
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if tag in ("button", "a"):
+            self._skip_text = True
+            return
+
+        
         if tag == "div" and "class" in attrs and "schedule-column" in attrs["class"]:
             self.in_game = True
             self._div_stack = 1
@@ -76,6 +83,10 @@ class GamesParser(HTMLParser):
                     self.current_game["url"] = "https://quizplease.ru" + href
 
     def handle_endtag(self, tag):
+        if tag in ("button", "a"):
+            self._skip_text = False
+            return
+        
         if self.in_game and tag == "div":
             self._div_stack -= 1
             if self._div_stack <= 0:
@@ -98,6 +109,9 @@ class GamesParser(HTMLParser):
             self.current_field = None
 
     def handle_data(self, data):
+       if getattr(self, "_skip_text", False):
+            return  # игнорируем текст кнопок и ссылок
+        
         if self.in_game and self.current_field:
             text = data.strip()
             if text:
