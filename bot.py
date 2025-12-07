@@ -51,18 +51,18 @@ async def run_parser(callback: types.CallbackQuery):
         return    
         
     text = "🔎 Найденные игры:\n\n"
-    await callback.message.answer(text, parse_mode=ParseMode.HTML)
+
     for g in games[:10]:
         text += (
             f"🎮 <b>{g.get('title', '—')}</b>\n"
             f"📅 <b>{g.get('date', '—')}</b>\n"
-            f"📍  <b>{g.get('bar', '—')}</b>\n"
+            f"📍 <b>{g.get('bar', '—')}</b>\n"
             f"💰 <b>{g.get('price', '—')}</b>\n"
             f"🔗 <b>{g.get('url', '—')}</b>\n\n"
         )
-        await callback.message.answer(text, parse_mode=ParseMode.HTML)
-        
+
     await callback.message.answer(text, parse_mode=ParseMode.HTML)
+
     await insert_games_bulk(newgames)
     
 
