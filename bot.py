@@ -33,6 +33,32 @@ async def start(message: types.Message):
 
 
 # --------------------------
+#Парсер игр
+# --------------------------
+@dp.callback_query(F.data == "run_parser")
+async def run_parser(callback: types.CallbackQuery):
+    await callback.answer("Запускаю парсер...")
+
+    games = fetch_games()
+
+    if not games:
+        await callback.message.answer("❗ Игр не найдено.")
+        return
+
+    text = "🔎 Найденные игры:\n\n"
+
+    for g in games[:10]:  # первые 10, чтобы не спамить
+        text += (
+            f"🎮 <b>{g['title']}</b>\n"
+            f"📅 {g['date']}\n"
+            f"📍 {g['bar']}\n"
+            f"💰 {g['price']}\n"
+            f"🔗 {g['url']}\n\n"
+        )
+
+    await callback.message.answer(text, parse_mode=ParseMode.HTML)
+
+# --------------------------
 # СОЗДАНИЕ КОМАНДЫ
 # --------------------------
 @dp.callback_query(F.data == "create_team")
