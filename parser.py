@@ -2,9 +2,9 @@
 
 import requests
 from bs4 import BeautifulSoup
+from config import SCHEDULE_URL
 
-URL = "https://quizplease.ru/schedule?QpGameSearch%5BcityId%5D=41&QpGameSearch%5Bdates%5D=&QpGameSearch%5Btype%5D%5B%5D=all&QpGameSearch%5Bformat%5D%5B%5D=all&QpGameSearch%5Bars%5D%5B%5D=all"
-
+URL = SCHEDULE_URL
 
 def fetch_games():
     response = requests.get(URL, timeout=10)
