@@ -109,9 +109,8 @@ def filter_new_games(parsed_games: list) -> list:
     new_games = [g for g in parsed_games if int(g["id"]) not in existing_ids]
 
     log(f"New games found: {len(new_games)}")
-    await callback.message.answer("найдено1")
-    return new_games    
-    await callback.message.answer("найдено2")
+    return new_games
+    
 # ==========================
 # ФУНКЦИЯ: массовая вставка новых игр
 # ==========================
