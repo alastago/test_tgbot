@@ -40,9 +40,13 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS games (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY,
+        date TEXT,
         title TEXT,
-        date TEXT
+        bar TEXT,
+        price TEXT,
+        url TEXT,
+        added_at TEXT
     );
     """)
 
