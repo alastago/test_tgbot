@@ -55,10 +55,10 @@ async def run_parser(callback: types.CallbackQuery):
     for g in games[:10]:
         text += (
             f"🎮 <b>{g.get('title', '—')}</b>\n"
-            f"📅 {g.get('date', '—')}</b>\n"
-            f"📍 {g.get('bar', '—')}</b>\n"
-            f"💰 {g.get('price', '—')}</b>\n"
-            f"🔗 {g.get('url', '—')}</b>\n\n"
+            f"📅 <b>{g.get('date', '—')}</b>\n"
+            f"📍  <b>{g.get('bar', '—')}</b>\n"
+            f"💰 <b>{g.get('price', '—')}</b>\n"
+            f"🔗 <b>{g.get('url', '—')}</b>\n\n"
         )
         await callback.message.answer(text, parse_mode=ParseMode.HTML)
         
