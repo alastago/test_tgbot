@@ -45,7 +45,7 @@ async def run_parser(callback: types.CallbackQuery):
     games = await fetch_games()
     newgames = filter_new_games(games)
     
-    if not games:
+    if not newgames:
         await callback.message.answer("❗ Игр не найдено.")
         return    
         
