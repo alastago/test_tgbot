@@ -43,7 +43,7 @@ async def run_parser(callback: types.CallbackQuery):
     await callback.answer("Запускаю парсер...")
 
     games = await fetch_games()
-    newgames = await filter_new_games(games)
+    newgames = filter_new_games(games)
     await callback.message.answer("найдено")
     
     if not games:
