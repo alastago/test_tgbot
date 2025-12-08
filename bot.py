@@ -8,14 +8,22 @@ from parser import fetch_games
 from states import *
 from keyboards import *
 from dataset.database import *
-from config import TOKEN
+
+from datetime import datetime
+from config import TOKEN, LOGFILE
+
+def log(text: str):
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOGFILE, "a", encoding="utf-8") as f:
+        f.write(f"[{ts}] {text}\n")
+
 
 bot = Bot(TOKEN)
 dp = Dispatcher()
 
 init_db()   # создаём базу при запуске
 
-
+        
 # --------------------------
 # START
 # --------------------------
@@ -38,32 +46,116 @@ async def start(message: types.Message):
 # --------------------------
 #Парсер игр
 # --------------------------
-@dp.callback_query(F.data == "run_parser")
-async def run_parser(callback: types.CallbackQuery):
-    await callback.answer("Запускаю парсер...")
+async def parser_worker():
+    """
+    Фоновая задача: каждые 60 секунд парсит игры.
+    Добавляет новые в БД.
+    Автоматически записывает команды.
+    Рассылает уведомления игрокам.
+    """
+    await asyncio.sleep(3)      # чтобы бот успел запуститься
 
-    games = await fetch_games()
-    newgames = filter_new_games(games)
+    while True:
+        try:
+            log("Запуск автоматического парсера")
+
+            # 1) Получаем игры
+            games = await fetch_games()
+            newgames = filter_new_games(games)
+
+            if not newgames:
+                log("Новых игр нет")
+            else:
+                log(f"Найдено новых игр: {len(newgames)}")
+                await insert_games_bulk(newgames)
+                log("Новые игры добавлены в БД")
+
+            # 2. Автозапись команд
+            await auto_register_teams()
+
+            # 3. Уведомления пользователей
+            await notify_players_about_games()
+
+        except Exception as e:
+            log(f"Ошибка в parser_worker: {e}")
+
+        await asyncio.sleep(60)
     
-    if not newgames:
-        await callback.message.answer("❗ Игр не найдено.")
-        return    
-        
-    text = "🔎 Найденные игры:\n\n"
+# --------------------------
+#Автозапись команд на новые игры
+# --------------------------
 
-    for g in newgames[:10]:
-        text += (
-            f"🎮 <b>{g.get('title', '—')}</b>\n"
-            f"📅 <b>{g.get('date', '—')}</b>\n"
-            f"📍 <b>{g.get('bar', '—')}</b>\n"
-            f"💰 <b>{g.get('price', '—')}</b>\n"
-            f"🔗 <b>{g.get('url', '—')}</b>\n\n"
-        )
+async def auto_register_teams():
+    """
+    Команды с auto_reg_enabled=1 автоматически записываются на все новые игры.
+    """
+    conn = get_db()
+    cur = conn.cursor()
 
-    await callback.message.answer(text, parse_mode=ParseMode.HTML)
+    cur.execute("SELECT id FROM teams WHERE auto_reg_enabled=1")
+    teams = cur.fetchall()
 
-    await insert_games_bulk(newgames)
-    
+    if not teams:
+        return
+
+    cur.execute("SELECT id FROM games ORDER BY id DESC LIMIT 20")
+    games = cur.fetchall()
+
+    for team in teams:
+        for game in games:
+            cur.execute("""
+                INSERT OR IGNORE INTO team_games (team_id, game_id)
+                VALUES (?, ?)
+            """, (team["id"], game["id"]))
+
+    conn.commit()
+    log("Автозапись команд выполнена")
+
+# --------------------------
+#Рассылка уведомлений в чат
+# --------------------------
+
+async def notify_players_about_games():
+    """
+    Находит игры, на которые команда записалась недавно, и сообщает игрокам.
+    """
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT tg.team_id, tg.game_id, g.title, g.date
+        FROM team_games tg
+        JOIN games g ON g.id = tg.game_id
+        WHERE tg.notified IS NULL
+    """)
+    events = cur.fetchall()
+
+    if not events:
+        return
+
+    for e in events:
+        team_id = e["team_id"]
+        game_id = e["game_id"]
+
+        cur.execute("SELECT user_id FROM players WHERE team_id=?", (team_id,))
+        users = cur.fetchall()
+
+        for u in users:
+            try:
+                await bot.send_message(
+                    u["user_id"],
+                    f"📢 Ваша команда записана на игру!\n"
+                    f"🎮 {e['title']}\n"
+                    f"📅 {e['date']}"
+                )
+            except:
+                pass
+
+        cur.execute("UPDATE team_games SET notified=1 WHERE team_id=? AND game_id=?", (team_id, game_id))
+
+    conn.commit()
+    log(f"Разослано уведомлений: {len(events)}")
+
 
 # --------------------------
 # СОЗДАНИЕ КОМАНДЫ
@@ -260,6 +352,7 @@ async def register_player(callback: types.CallbackQuery):
 # RUN
 # --------------------------
 async def main():
+    asyncio.create_task(parser_worker())   # ← добавлено фоновое задание записи
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
