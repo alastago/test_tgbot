@@ -100,12 +100,13 @@ class GamesParser(HTMLParser):
     def handle_data(self, data):
         if self.in_game and self.current_field:
             text = data.strip()
+            
             if text:
-                if self.current_field == "bar":
-                    text.replace("Информация о площадке","")
-                    text.replace("Где это?","")
+               if self.current_field == "bar":
+                    text = text.replace("Информация о площадке", "")
+                    text = text.replace("Где это?", "")
                 prev = self.current_game.get(self.current_field)
-                self.current_game[self.current_field] = prev + " " + text if prev else text
+                self.current_game[self.current_field] = (prev + " " + text).strip() if prev else text
 
 async def fetch_games():
     log("Start fetch_games()")
