@@ -8,6 +8,7 @@ from parser import fetch_games
 from states import *
 from keyboards import *
 from dataset.database import *
+from registration import register_team_on_quizplease
 
 from datetime import datetime
 from config import TOKEN, LOGFILE
@@ -102,13 +103,50 @@ async def auto_register_teams():
     games = cur.fetchall()
 
     for team in teams:
-        for game in games:
-            cur.execute("""
-                INSERT OR IGNORE INTO team_games (team_id, game_id)
-                VALUES (?, ?)
-            """, (team["id"], game["id"]))
+        team_id = team["id"]
+        team_name = team["name"]
+        captain_name = team["captainName"] or "-"
+        email = team["email"] or "-"
+        phone = team["phone"] or "+"
+        whitelist = team.get("whitelist", "").split(",")  # ключевые слова белого списка
+        blacklist = team.get("blacklist", "").split(",")  # ключевые слова черного списка
+        # Получаем игры, на которые команда ещё не записана
+        cur.execute("""
+            SELECT * FROM games g
+            WHERE g.id NOT IN (SELECT game_id FROM team_games WHERE team_id=?)
+        """, (team_id,))
+        available_games = cur.fetchall()
+        for g in available_games:
+            title = g["title"]
 
-    conn.commit()
+            # Проверка whitelist / blacklist
+            if whitelist and not any(w.lower() in title.lower() for w in whitelist):
+                continue  # пропускаем, если есть белый список и нет совпадений
+            if blacklist and any(b.lower() in title.lower() for b in blacklist):
+                continue  # пропускаем, если есть черный список и есть совпадения
+
+            # Пытаемся зарегистрировать
+            code, message = await register_team_on_quizplease(
+                game_id=g["id"],
+                team_name=team_name,
+                captain_name=captain_name,
+                email=email,
+                phone=phone,
+                players_count=5,
+                comment="Автозапись"
+            )
+            if code in ("1", "4", "5"):  # успешные варианты
+                # Запись в БД о регистрации команды на игру
+                cur.execute(
+                    "INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)",
+                    (team_id, g["id"])
+                )
+                conn.commit()
+             else:
+                log(f"Регистрация команды '{team_name}' на игру '{title}' не удалась: {message}")
+        
+
+    conn.close()
     log("Автозапись команд выполнена")
 
 # --------------------------
