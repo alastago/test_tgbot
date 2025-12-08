@@ -53,8 +53,12 @@ class GamesParser(HTMLParser):
             self.current_game = {"id": attrs.get("id")}
             log(f"Found schedule-column id={attrs.get('id')}")
             return
-
+            
         if self.in_game:
+            if self.current_field == "bar" and tag == "a":
+                # пропускаем ссылки “Где это?”
+                return
+            
             if tag == "div":
                 self._div_stack += 1
             if tag == "div" and "class" in attrs:
@@ -100,13 +104,19 @@ class GamesParser(HTMLParser):
     def handle_data(self, data):
         if self.in_game and self.current_field:
             text = data.strip()
-            
-            if text:
-               if self.current_field == "bar":
-                    text = text.replace("Информация о площадке", "")
-                    text = text.replace("Где это?", "")
-                prev = self.current_game.get(self.current_field)
-                self.current_game[self.current_field] = (prev + " " + text).strip() if prev else text
+            if not text:
+                return
+    
+            if self.current_field == "bar":
+                # удаляем лишнее
+                if text in ("Информация о площадке", "Где это?"):
+                    return
+                text = text.replace("Информация о площадке", "")
+                text = text.replace("Где это?", "")
+                text = text.strip()
+    
+            prev = self.current_game.get(self.current_field)
+            self.current_game[self.current_field] = (prev + " " + text).strip() if prev else text
 
 async def fetch_games():
     log("Start fetch_games()")
