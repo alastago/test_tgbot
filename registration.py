@@ -1,14 +1,13 @@
 import aiohttp
 import asyncio
 from datetime import datetime
-
-LOGFILE = "quiz_autoreg.log"
+from config import LOGFILE
 
 def log(text: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
-    print(f"[{ts}] {text}")
+
 
 async def register_team_on_quizplease(
     game_id: int,
