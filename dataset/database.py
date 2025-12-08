@@ -34,9 +34,12 @@ def init_db():
         email TEXT,
         phone TEXT,
         captainName TEXT,
-        captain_id INTEGER
+        captain_id INTEGER,
+        auto_signup INTEGER DEFAULT 0,
+        signup_mode TEXT DEFAULT 'white',
+        keywords TEXT DEFAULT ''
     );
-    """) 
+    """)
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS games (
