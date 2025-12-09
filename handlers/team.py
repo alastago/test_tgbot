@@ -1,4 +1,4 @@
-from aiogram import types
+from aiogram import types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from dataset.database import get_db
