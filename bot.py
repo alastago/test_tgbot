@@ -164,7 +164,7 @@ async def notify_players_about_games():
         SELECT tg.team_id, tg.game_id, g.title, g.date
         FROM team_games tg
         JOIN games g ON g.id = tg.game_id
-        WHERE tg.notified IS NULL
+        WHERE tg.notification_status = 0
     """)
     events = cur.fetchall()
 
@@ -189,7 +189,7 @@ async def notify_players_about_games():
             except:
                 pass
 
-        cur.execute("UPDATE team_games SET notified=1 WHERE team_id=? AND game_id=?", (team_id, game_id))
+        cur.execute("UPDATE team_games SET notification_status=1 WHERE team_id=? AND game_id=?", (team_id, game_id))
 
     conn.commit()
     log(f"Разослано уведомлений: {len(events)}")
