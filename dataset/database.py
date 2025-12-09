@@ -151,7 +151,7 @@ def insert_games_bulk(games: list):
                 now = datetime.now().isoformat(sep=' ', timespec='milliseconds')
                 item = (
                     int(g.get("id")),
-                    g.get("date"),
+                    g.get("datetext"),
                     "",
                     g.get("title"),
                     g.get("bar"),
