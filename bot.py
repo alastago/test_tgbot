@@ -54,7 +54,7 @@ async def parser_worker():
     Автоматически записывает команды.
     Рассылает уведомления игрокам.
     """
-    await asyncio.sleep(3)      # чтобы бот успел запуститься
+    await asyncio.sleep(10)      # чтобы бот успел запуститься
 
     while True:
         try:
