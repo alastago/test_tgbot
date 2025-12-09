@@ -22,8 +22,7 @@ def init_db():
     cur.execute("""
     CREATE TABLE IF NOT EXISTS players (
         user_id INTEGER PRIMARY KEY,
-        username TEXT,
-        team_id INTEGER
+        username TEXT
     );
     """)
 
@@ -57,15 +56,18 @@ def init_db():
     CREATE TABLE IF NOT EXISTS team_games (
         team_id INTEGER,
         game_id INTEGER,
+        signup_status INTEGER DEFAULT 0,
+        notification_status INTEGER DEFAULT 0,
         PRIMARY KEY (team_id, game_id)
     );
     """)
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS player_games (
+    CREATE TABLE IF NOT EXISTS player_teams (
         user_id INTEGER,
-        game_id INTEGER,
-        PRIMARY KEY (user_id, game_id)
+        team_id INTEGER,
+        is_capitan INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, team_id)
     );
     """)
     conn.commit()
