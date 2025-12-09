@@ -17,6 +17,9 @@ class CreateTeam(StatesGroup):
     signup_mode = State()
     keywords = State()
 
+class BindChat(StatesGroup):
+    name = State()
+
 def register_team_handlers(dp):
 
     @dp.callback_query(F.data == "create_team")
@@ -116,25 +119,23 @@ def register_team_handlers(dp):
         await state.clear()
         
 # Привязка чата к команде
-    @dp.message(Command("bind_chat"))
-    async def bind_team_chat(message: types.Message, command: CommandObject, state: FSMContext):
-        """
-        Капитан привязывает текущий чат к своей команде.
-        Использование: /bind_chat <название команды>
-        """
+    @dp.callback_query(F.data == "bind_chat")
+    async def bind_team_chat(callback: types.CallbackQuery, state: FSMContext):
+        #Капитан привязывает текущий чат к своей команде.
         if message.chat.type not in ("group", "supergroup"):
             await message.answer("Привязка чата возможна только из группового чата!")
             return
             
-        user_id = message.from_user.id
-        args = message.get_args()  # получаем текст после команды
+        await message.answer("Укажите название команды:")
+        await state.set_state(BindChat.name)
+        await callback.answer()
         
-        if not args:
-            await message.answer("Укажите название команды: /bind_chat <название вашей команды>")
-            return
-    
-        team_name = args.strip()
-    
+    @dp.message(BindChat.name)
+    async def finish_bind_chat(message: types.Message, state: FSMContext):
+        
+        team_name = message.text
+        user_id = message.from_user.id
+        
         conn = get_db()
         cur = conn.cursor()
         # Проверяем, что пользователь капитан указанной команды
@@ -156,7 +157,6 @@ def register_team_handlers(dp):
             (chat_id, team_id)
         )
         conn.commit()
-    
         await message.answer(f"Командный чат для команды '{team_name}' успешно привязан! ✅")
 
 # --------------------------
