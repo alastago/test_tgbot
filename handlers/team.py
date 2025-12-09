@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from database import get_db
+from dataset.database import get_db
 from keyboards import main_menu
 
 class CreateTeam(StatesGroup):
