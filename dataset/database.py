@@ -34,6 +34,7 @@ def init_db():
         phone TEXT,
         captainName TEXT,
         captain_id INTEGER,
+        chat_id INTEGER,
         auto_signup INTEGER DEFAULT 0,
         signup_mode TEXT DEFAULT 'white',
         keywords TEXT DEFAULT ''
