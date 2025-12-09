@@ -48,7 +48,7 @@ async def start(message: types.Message):
 
 @dp.message()
 async def debug(message: types.Message):
-    log(" DEBUG:" & message.text & " CHAT TYPE:" & message.chat.type)
+    log(" DEBUG:" + message.text + " CHAT TYPE:" + message.chat.type)
     
 # --------------------------
 #Парсер игр
