@@ -93,13 +93,13 @@ async def auto_register_teams():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM teams WHERE auto_reg_enabled=1")
+    cur.execute("SELECT * FROM teams WHERE auto_reg_enabled=1")
     teams = cur.fetchall()
 
     if not teams:
         return
 
-    cur.execute("SELECT id FROM games ORDER BY id DESC LIMIT 20")
+    cur.execute("SELECT id FROM games ORDER BY id DESC")
     games = cur.fetchall()
 
     for team in teams:
@@ -135,14 +135,14 @@ async def auto_register_teams():
                 players_count=5,
                 comment="Автозапись"
             )
-         if code in ("1", "4", "5"):  # успешные варианты
+            if code in ("1", "4", "5"):  # успешные варианты
                 # Запись в БД о регистрации команды на игру
                 cur.execute(
                     "INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)",
                     (team_id, g["id"])
                 )
                 conn.commit()
-
+            
             else:
                 log(f"Регистрация команды '{team_name}' на игру '{title}' не удалась: {message}")
 
