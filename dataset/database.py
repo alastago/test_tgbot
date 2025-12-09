@@ -152,7 +152,7 @@ def insert_games_bulk(games: list):
                 item = (
                     int(g.get("id")),
                     g.get("datetext"),
-                    "",
+                    g.get("date"),
                     g.get("title"),
                     g.get("bar"),
                     g.get("price"),
