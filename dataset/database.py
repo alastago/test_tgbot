@@ -43,7 +43,8 @@ def init_db():
     cur.execute("""
     CREATE TABLE IF NOT EXISTS games (
         id INTEGER PRIMARY KEY,
-        date TEXT,
+        datetext TEXT,
+        date DATETIME,
         title TEXT,
         bar TEXT,
         price TEXT,
