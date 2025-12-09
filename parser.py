@@ -7,7 +7,7 @@ import time
 from html.parser import HTMLParser
 from datetime import datetime
 from config import SCHEDULE_URL, HTML_DUMP, LOGFILE
-from dataset.game_schema import validate_game
+
 
 # =========================
 # Заголовки как в браузере
@@ -88,14 +88,6 @@ class GamesParser(HTMLParser):
                     self.games.append(self.current_game)
                     log(f"Saved game: {self.current_game.get('title')}")
                    
-                    # 🔍 Валидация объекта игры
-                    is_valid, errors = validate_game(self.current_game)
-                    if not is_valid:
-                        log("Game schema validation failed:")
-                        for e in errors:
-                            log(f"  - {e}")
-                    else:
-                        log("Game schema OK")
                 self.current_game = {}
                 self.current_field = None
         else:
