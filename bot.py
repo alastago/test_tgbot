@@ -26,7 +26,10 @@ dp = Dispatcher()
 
 init_db()   # создаём базу при запуске
 
-        
+@dp.message()
+async def debug(message: types.Message):
+    log(" DEBUG:" & message.text & " CHAT TYPE:" & message.chat.type)
+    
 # --------------------------
 # START
 # --------------------------
