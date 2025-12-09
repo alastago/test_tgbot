@@ -4,6 +4,10 @@ from aiogram.fsm.state import State, StatesGroup
 from dataset.database import get_db
 from keyboards import main_menu
 
+
+# --------------------------
+# СОЗДАНИЕ КОМАНДЫ
+# --------------------------
 class CreateTeam(StatesGroup):
     name = State()
     email = State()
@@ -12,10 +16,6 @@ class CreateTeam(StatesGroup):
     auto_signup = State()
     signup_mode = State()
     keywords = State()
-
-# --------------------------
-# СОЗДАНИЕ КОМАНДЫ
-# --------------------------
 
 def register_team_handlers(dp):
 
@@ -112,5 +112,57 @@ def register_team_handlers(dp):
             await message.answer(f"Ошибка при создании команды: {e}")
             return
 
-        await message.answer(f"Команда '{name}' успешно создана!", reply_markup=main_menu())
+        await message.answer(f"Команда '{name}' успешно создана!\nДля добавления участников необходимо создать командный чат, и добавить в него бота", reply_markup=main_menu())
         await state.clear()
+# --------------------------
+# Привязка чата к команде
+# --------------------------
+
+@dp.message(Command("bind_chat"))
+async def bind_team_chat(message: types.Message, state: FSMContext):
+    """
+    Капитан привязывает текущий чат к своей команде.
+    Использование: /bind_chat <название команды>
+    """
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("Привязка чата возможна только из группового чата!")
+        return
+        
+    user_id = message.from_user.id
+    args = message.get_args()  # получаем текст после команды
+    
+    if not args:
+        await message.answer("Укажите название команды: /bind_chat <название вашей команды>")
+        return
+
+    team_name = args.strip()
+
+    conn = get_db()
+    cur = conn.cursor()
+    # Проверяем, что пользователь капитан указанной команды
+    cur.execute(
+        "SELECT id FROM teams WHERE name = ? AND captain_id = ?",
+        (team_name, user_id)
+    )
+    team = cur.fetchone()
+    if not team:
+        await message.answer("Вы не являетесь капитаном команды с таким названием.")
+        return
+
+    team_id = team[0]
+    chat_id = message.chat.id
+
+    # Привязываем чат к команде
+    cur.execute(
+        "UPDATE teams SET chat_id = ? WHERE id = ?",
+        (chat_id, team_id)
+    )
+    conn.commit()
+
+    await message.answer(f"Командный чат для команды '{team_name}' успешно привязан! ✅")
+# --------------------------
+# ВСТУПЛЕНИЕ В КОМАНДУ
+# --------------------------
+
+
+
