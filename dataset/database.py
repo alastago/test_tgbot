@@ -152,6 +152,7 @@ def insert_games_bulk(games: list):
                 item = (
                     int(g.get("id")),
                     g.get("date"),
+                    "",
                     g.get("title"),
                     g.get("bar"),
                     g.get("price"),
@@ -168,8 +169,8 @@ def insert_games_bulk(games: list):
 
         # Выполнение запроса
         cur.executemany("""
-            INSERT INTO games (id, date, title, bar, price, url, added_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO games (id, datetext, date, title, bar, price, url, added_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?,?)
         """, insert_data)
 
         conn.commit()
