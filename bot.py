@@ -8,6 +8,8 @@ from parser import fetch_games
 from states import *
 from keyboards import *
 from dataset.database import *
+from handlers.team import *
+
 from registration import register_team_on_quizplease
 
 from datetime import datetime
@@ -197,47 +199,15 @@ async def notify_players_about_games():
 
 # --------------------------
 # СОЗДАНИЕ КОМАНДЫ
+# handlers.team
 # --------------------------
-@dp.callback_query(F.data == "create_team")
-async def ask_team_name(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите название команды:")
-    await state.set_state(CreateTeam.name)
-    await callback.answer()
-
-
-@dp.message(CreateTeam.name)
-async def team_email(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await message.answer("Введите email команды:")
-    await state.set_state(CreateTeam.email)
-
-
-@dp.message(CreateTeam.email)
-async def finish_team(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    name = data["name"]
-    email = message.text
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    # создаём команду
-    cur.execute("INSERT INTO teams (name, email, captain_id) VALUES (?, ?, ?)",
-                (name, email, message.from_user.id))
-    conn.commit()
-
-    # игрок = капитан
-    cur.execute("UPDATE players SET team_id=(SELECT id FROM teams WHERE name=?) WHERE user_id=?",
-                (name, message.from_user.id))
-    conn.commit()
-
-    await message.answer(f"Команда '{name}' создана!", reply_markup=main_menu())
-    await state.clear()
-
+register_team_handlers(dp)
 
 # --------------------------
 # ВСТУПЛЕНИЕ В КОМАНДУ
+# handlers.team
 # --------------------------
+
 @dp.callback_query(F.data == "join_team")
 async def join_team(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите название команды для вступления:")
