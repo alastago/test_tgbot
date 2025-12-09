@@ -135,16 +135,16 @@ async def auto_register_teams():
                 players_count=5,
                 comment="Автозапись"
             )
-            if code in ("1", "4", "5"):  # успешные варианты
+         if code in ("1", "4", "5"):  # успешные варианты
                 # Запись в БД о регистрации команды на игру
                 cur.execute(
                     "INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)",
                     (team_id, g["id"])
                 )
                 conn.commit()
-             else:
+
+            else:
                 log(f"Регистрация команды '{team_name}' на игру '{title}' не удалась: {message}")
-        
 
     conn.close()
     log("Автозапись команд выполнена")
@@ -390,7 +390,7 @@ async def register_player(callback: types.CallbackQuery):
 # RUN
 # --------------------------
 async def main():
-    asyncio.create_task(parser_worker())   # ← добавлено фоновое задание записи
+    asyncio.create_task(parser_worker())  # запускаем фоновый процесс
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
