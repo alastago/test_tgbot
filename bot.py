@@ -26,7 +26,6 @@ dp = Dispatcher()
 
 init_db()   # создаём базу при запуске
 
-
     
 # --------------------------
 # START
@@ -45,10 +44,6 @@ async def start(message: types.Message):
         conn.commit()
 
     await message.answer("Привет! Выберите действие:", reply_markup=main_menu())
-
-@dp.message()
-async def debug(message: types.Message):
-    log(" DEBUG:" + message.text + " CHAT TYPE:" + message.chat.type)
     
 # --------------------------
 #Парсер игр
