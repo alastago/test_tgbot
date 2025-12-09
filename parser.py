@@ -53,7 +53,7 @@ def parse_datetext_to_datetime(datetext: str):
         now = datetime.now()
 
         # отделяем дату от времени
-        date_part, time_part = datetext.split("в")
+        date_part, time_part = datetext.rsplit("в", 1)
         date_part = date_part.strip()  # '10 декабря, Среда'
         time_part = time_part.strip()  # '19:30'
 
