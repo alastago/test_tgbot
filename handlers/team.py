@@ -29,21 +29,21 @@ def register_team_handlers(dp):
     @dp.message(CreateTeam.name)
     async def ask_team_email(message: types.Message, state: FSMContext):
         await state.update_data(name=message.text)
-        await message.answer("Введите email команды:")
+        await message.answer("Введите email команды (для регистрации на игры):")
         await state.set_state(CreateTeam.email)
 
 
     @dp.message(CreateTeam.email)
     async def ask_team_phone(message: types.Message, state: FSMContext):
         await state.update_data(email=message.text)
-        await message.answer("Введите телефон команды (можно оставить пустым):")
+        await message.answer("Введите телефон команды (для регистрации на игры):")
         await state.set_state(CreateTeam.phone)
 
 
     @dp.message(CreateTeam.phone)
     async def ask_captain_name(message: types.Message, state: FSMContext):
         await state.update_data(phone=message.text)
-        await message.answer("Введите имя капитана:")
+        await message.answer("Введите имя капитана (для регистрации на игры):")
         await state.set_state(CreateTeam.captain_name)
 
 
