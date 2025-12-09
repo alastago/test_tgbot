@@ -3,6 +3,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 def main_menu():
     kb = [
         [InlineKeyboardButton(text="Мои команды", callback_data="teams")],
+        
+        [InlineKeyboardButton(text="Привязка чата", callback_data="bind_chat")],
         [InlineKeyboardButton(text="Создать команду", callback_data="create_team")],
         [InlineKeyboardButton(text="Вступить в команду", callback_data="join_team")],
         [InlineKeyboardButton(text="Игры", callback_data="games")],
