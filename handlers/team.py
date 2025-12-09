@@ -122,11 +122,12 @@ def register_team_handlers(dp):
     @dp.callback_query(F.data == "bind_chat")
     async def bind_team_chat(callback: types.CallbackQuery, state: FSMContext):
         #Капитан привязывает текущий чат к своей команде.
-        if message.chat.type not in ("group", "supergroup"):
-            await message.answer("Привязка чата возможна только из группового чата!")
+        if callback.message.chat.type not in ("group", "supergroup"):
+            await callback.message.answer("Привязка чата возможна только из группового чата!")
+            await callback.answer()
             return
             
-        await message.answer("Укажите название команды:")
+        await callback.message.answer("Укажите название команды:")
         await state.set_state(BindChat.name)
         await callback.answer()
         
