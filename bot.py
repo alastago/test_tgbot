@@ -88,12 +88,12 @@ async def parser_worker():
 
 async def auto_register_teams():
     """
-    Команды с auto_reg_enabled=1 автоматически записываются на все новые игры.
+    Команды с auto_signup=1 автоматически записываются на все новые игры.
     """
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM teams WHERE auto_reg_enabled=1")
+    cur.execute("SELECT * FROM teams WHERE auto_auto_signup=1")
     teams = cur.fetchall()
 
     if not teams:
