@@ -23,10 +23,18 @@ USER_AGENTS = [
 
 CRAWL_DELAY = 10  # из robots.txt
 
+MONTHS = {
+    "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+    "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+    "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
+}
+
+
 def log(text: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
+
 
 def looks_like_bot_block(html: str) -> bool:
     lower = html.lower()
@@ -35,6 +43,43 @@ def looks_like_bot_block(html: str) -> bool:
         "verify", "are you human", "requests from your device look like automated"
     ]
     return any(ch in lower for ch in checks)
+
+def parse_datetext_to_datetime(datetext: str):
+    """
+    datetext: '10 декабря, Среда в 19:30'
+    Возвращает datetime. Если дата уже прошла, переносим на следующий год.
+    """
+    try:
+        now = datetime.now()
+
+        # отделяем дату от времени
+        date_part, time_part = datetext.split("в")
+        date_part = date_part.strip()  # '10 декабря, Среда'
+        time_part = time_part.strip()  # '19:30'
+
+        # извлекаем день и месяц
+        day_str, month_str, *_ = date_part.replace(",", "").split()
+        day = int(day_str)
+        month = MONTHS[month_str.lower()]
+
+        # извлекаем часы и минуты
+        hour, minute = map(int, time_part.split(":"))
+
+        # создаем datetime с текущим годом
+        dt = datetime(year=now.year, month=month, day=day, hour=hour, minute=minute)
+
+        # если дата уже прошла, переносим на следующий год
+        if dt < now:
+            dt = datetime(year=now.year + 1, month=month, day=day, hour=hour, minute=minute)
+
+        return dt
+
+    except Exception as e:
+        log(f"Failed to parse datetext '{datetext}': {e}")
+        return None
+
+
+
 
 class GamesParser(HTMLParser):
     def __init__(self):
@@ -85,6 +130,8 @@ class GamesParser(HTMLParser):
             if self._div_stack <= 0:
                 self.in_game = False
                 if "title" in self.current_game:
+                    if "datetext" in self.current_game:
+                        self.current_game["date"] = parse_datetext_to_datetime(self.current_game["datetext"])
                     self.games.append(self.current_game)
                     log(f"Saved game: {self.current_game.get('title')}")
                    
@@ -154,3 +201,6 @@ async def fetch_games():
         time.sleep(CRAWL_DELAY)
 
         return parser.games
+
+
+
