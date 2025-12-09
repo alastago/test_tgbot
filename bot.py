@@ -37,8 +37,8 @@ async def start(message: types.Message):
     cur.execute("SELECT * FROM players WHERE user_id=?", (message.from_user.id,))
     row = cur.fetchone()
     if not row:
-        cur.execute("INSERT INTO players (user_id, username, team_id) VALUES (?, ?, ?)",
-                    (message.from_user.id, message.from_user.username, None))
+        cur.execute("INSERT INTO players (user_id, username) VALUES (?, ?)",
+                    (message.from_user.id, message.from_user.username))
         conn.commit()
 
     await message.answer("Привет! Выберите действие:", reply_markup=main_menu())
