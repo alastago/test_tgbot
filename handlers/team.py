@@ -1,5 +1,5 @@
 from aiogram import types, F
-from aiogram.filters import Command
+from aiogram.filters import CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from dataset.database import get_db
@@ -117,7 +117,7 @@ def register_team_handlers(dp):
         
 # Привязка чата к команде
     @dp.message(Command("bind_chat"))
-    async def bind_team_chat(message: types.Message, state: FSMContext):
+    async def bind_team_chat(message: types.Message, command: CommandObject, state: FSMContext):
         """
         Капитан привязывает текущий чат к своей команде.
         Использование: /bind_chat <название команды>
