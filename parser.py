@@ -65,7 +65,7 @@ class GamesParser(HTMLParser):
                 cls = attrs["class"]
                 if "h2-game-card" in cls:
                     self.current_field = "title"
-                elif "h3" in cls and "datetext" not in self.current_game:
+                elif "h3" in cls or "techtext" in cls:
                     self.current_field = "datetext"
                 elif "schedule-block-info-bar" in cls or "techtext techtext-halfwhite" in cls:
                     self.current_field = "bar"
