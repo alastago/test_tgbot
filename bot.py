@@ -93,7 +93,7 @@ async def auto_register_teams():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM teams WHERE auto_auto_signup=1")
+    cur.execute("SELECT * FROM teams WHERE auto_signup=1")
     teams = cur.fetchall()
 
     if not teams:
