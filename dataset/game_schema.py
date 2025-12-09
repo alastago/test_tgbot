@@ -3,7 +3,7 @@
 GAME_SCHEMA = {
     "id": str,        # уникальный id игры (из div id)
     "datetext": str,      # дата игры
-    "date": datetime,
+    "date": ts,
     "title": str,     # название игры
     "bar": str,       # место проведения
     "price": str,     # цена
