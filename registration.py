@@ -92,40 +92,64 @@ async def register_team_on_quizplease(
     comment: str = "Автозапись"
 ):
     url = f"https://quizplease.ru/game-page?id={game_id}"
-
-    data = {
-        "record-from-form": "1",
-        "QpRecord[teamName]": team_name,
-        "QpRecord[captainName]": captain_name,
-        "QpRecord[email]": email,
-        "QpRecord[phone]": phone,
-        "QpRecord[count]": str(players_count),
-        "QpRecord[comment]": comment,
-        "QpRecord[custom_fields_values]": "[]",
-        "QpRecord[first_time]": "0",
-        "certificates[]": "",
-        "QpRecord[is_agreed_to_mailing]": "1",
-        "QpRecord[game_id]": str(game_id),
-        "QpRecord[max_people_active]": "",
-        "reservation": "",
-        "QpRecord[site_content_id]": "",
-    }
-
-    headers = {
+    base_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        "Origin": "https://quizplease.ru",
+                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Upgrade-Insecure-Requests": "1",
         "Referer": url,
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Origin": "https://quizplease.ru",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
     }
-
+    
     async with aiohttp.ClientSession() as session:
+        # ---------- 1. GET HTML для получения cookie и CSRF ----------
+        async with session.get(url, headers=base_headers) as r:
+            log(f"GET page -> {r.status}")
+            html = await r.text()
+            cookies = session.cookie_jar.filter_cookies("https://quizplease.ru")
+            log(f"Полученные куки: {cookies}")
+
+        # ---------- 2. Достаём CSRF ----------
+        m = re.search(r'name="csrf-token" content="(.+?)"', html)
+        csrf = m.group(1) if m else None
+        log(f"CSRF = {csrf}")
+
+        if not csrf:
+            log("❌ CSRF не найден — 100% будет капча")
+        
+        # ---------- 3. Формируем POST ----------
+        post_headers = base_headers.copy()
+        post_headers["Content-Type"] = "application/x-www-form-urlencoded"
+        
+        data = {
+            "_csrf": csrf,
+            "record-from-form": "1",
+            "QpRecord[teamName]": team_name,
+            "QpRecord[captainName]": captain_name,
+            "QpRecord[email]": email,
+            "QpRecord[phone]": phone,
+            "QpRecord[count]": str(players_count),
+            "QpRecord[comment]": comment,
+            "QpRecord[custom_fields_values]": "[]",
+            "QpRecord[first_time]": "0",
+            "certificates[]": "",
+            "QpRecord[is_agreed_to_mailing]": "1",
+            "QpRecord[game_id]": str(game_id),
+            "QpRecord[max_people_active]": "",
+            "reservation": "",
+            "QpRecord[site_content_id]": "",
+        }
+         # ---------- 4. Делаем POST ----------
         try:
-            async with session.post(url, data=data, headers=headers, allow_redirects=False) as resp:
-                log(f"POST {url} -> status {resp.status}")
-                location = resp.headers.get("Location", "")
-                
-                # Проверяем success
+            async with session.post(url, data=data, headers=post_headers, allow_redirects=False) as resp:
+                log(f"POST -> {resp.status}")
+                log(f"Location: {resp.headers.get('Location')}")
+             # Проверяем success
                 if "success=" in location:
                     code = location.split("success=")[1]
                     code_map = {
@@ -143,7 +167,6 @@ async def register_team_on_quizplease(
                     text = await resp.text()
                     log(f"Регистрация не прошла, нет success в Location - {location}. Ответ сервера: {text[:200]}...")
                     return None, "Нет success в Location"
-
         except Exception as e:
             log(f"Ошибка при регистрации команды: {e}")
             return None, str(e)
