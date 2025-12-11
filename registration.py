@@ -141,7 +141,7 @@ async def register_team_on_quizplease(
                     return code, message
                 else:
                     text = await resp.text()
-                    log(f"Регистрация не прошла, нет success в Location. Ответ сервера: {text[:200]}...")
+                    log(f"Регистрация не прошла, нет success в Location - {location}. Ответ сервера: {text[:200]}...")
                     return None, "Нет success в Location"
 
         except Exception as e:
