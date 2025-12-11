@@ -256,8 +256,6 @@ async def register_team(callback: types.CallbackQuery):
         captain_name = team["captainName"] or "-"
         email = team["email"] or "-"
         phone = team["phone"] or "+"
-        whitelist = team.get("whitelist", "").split(",")  # ключевые слова белого списка
-        blacklist = team.get("blacklist", "").split(",")  # ключевые слова черного списка
                 
 
         log(f"Пытаемся записать team_id={team_id} на game_id={game_id}")
