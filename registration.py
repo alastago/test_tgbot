@@ -95,7 +95,7 @@ async def register_team_on_quizplease(
     async with aiohttp.ClientSession() as s:
         r = await s.get(f"https://quizplease.ru/game-page?id={game_id}")
         html = await r.text()
-        with open("/mnt/data/game.html", "w", encoding="utf-8") as f:
+        with open("game.html", "w", encoding="utf-8") as f:
             f.write(html)
         
     url = f"https://quizplease.ru/game-page?id={game_id}"
