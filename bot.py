@@ -10,7 +10,7 @@ from keyboards import *
 from dataset.database import *
 from handlers.team import *
 
-from registration import register_team_on_quizplease
+from registration import *
 
 from datetime import datetime
 from config import TOKEN, LOGFILE
@@ -82,78 +82,10 @@ async def parser_worker():
             log(f"Ошибка в parser_worker: {e}")
 
         await asyncio.sleep(60)
-    
-# --------------------------
-#Автозапись команд на новые игры
-# --------------------------
-
-async def auto_register_teams():
-    """
-    Команды с auto_signup=1 автоматически записываются на все новые игры.
-    """
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM teams WHERE auto_signup=1")
-    teams = cur.fetchall()
-
-    if not teams:
-        return
-
-    cur.execute("SELECT id FROM games ORDER BY id DESC")
-    games = cur.fetchall()
-
-    for team in teams:
-        team_id = team["id"]
-        team_name = team["name"]
-        captain_name = team["captainName"] or "-"
-        email = team["email"] or "-"
-        phone = team["phone"] or "+"
-        whitelist = team.get("whitelist", "").split(",")  # ключевые слова белого списка
-        blacklist = team.get("blacklist", "").split(",")  # ключевые слова черного списка
-        # Получаем игры, на которые команда ещё не записана
-        cur.execute("""
-            SELECT * FROM games g
-            WHERE g.id NOT IN (SELECT game_id FROM team_games WHERE team_id=?)
-        """, (team_id,))
-        available_games = cur.fetchall()
-        for g in available_games:
-            title = g["title"]
-
-            # Проверка whitelist / blacklist
-            if whitelist and not any(w.lower() in title.lower() for w in whitelist):
-                continue  # пропускаем, если есть белый список и нет совпадений
-            if blacklist and any(b.lower() in title.lower() for b in blacklist):
-                continue  # пропускаем, если есть черный список и есть совпадения
-
-            # Пытаемся зарегистрировать
-            code, message = await register_team_on_quizplease(
-                game_id=g["id"],
-                team_name=team_name,
-                captain_name=captain_name,
-                email=email,
-                phone=phone,
-                players_count=5,
-                comment="Автозапись"
-            )
-            if code in ("1", "4", "5"):  # успешные варианты
-                # Запись в БД о регистрации команды на игру
-                cur.execute(
-                    "INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)",
-                    (team_id, g["id"])
-                )
-                conn.commit()
-            
-            else:
-                log(f"Регистрация команды '{team_name}' на игру '{title}' не удалась: {message}")
-
-    conn.close()
-    log("Автозапись команд выполнена")
-
+        
 # --------------------------
 #Рассылка уведомлений в чат
 # --------------------------
-
 async def notify_players_about_games():
     """
     Находит игры, на которые команда записалась недавно, и сообщает игрокам.
@@ -264,44 +196,74 @@ async def list_games(callback: types.CallbackQuery):
 # --------------------------
 @dp.callback_query(F.data == "team_reg_game")
 async def team_choose_game(callback: types.CallbackQuery, state: FSMContext):
+    log("team_reg_game: вход в хендлер")
+
     conn = get_db()
     cur = conn.cursor()
 
-    # проверяем наличие команды
-    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
-    t = cur.fetchone()
-    if not t or not t["team_id"]:
-        await callback.message.answer("Вы не в команде.")
-        return
+    try:
+        # проверяем наличие команды
+        log(f"Проверяем команду для user_id={callback.from_user.id}")
+        cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
+        t = cur.fetchone()
+        log(f"Результат запроса команды: {t}")
 
-    # список игр
-    cur.execute("SELECT * FROM games")
-    games = cur.fetchall()
+        if not t or not t["team_id"]:
+            log("Команда не найдена")
+            await callback.message.answer("Вы не в команде.")
+            return
 
-    kb = [
-        [types.InlineKeyboardButton(text=f"{g['title']}", callback_data=f"team_game_{g['id']}")]
-        for g in games
-    ]
-    await callback.message.answer("Выберите игру:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb))
-    await callback.answer()
+        # список игр
+        log("Получаем список игр...")
+        cur.execute("SELECT * FROM games")
+        games = cur.fetchall()
+        log(f"Найдено игр: {len(games)}")
+
+        kb = [
+            [types.InlineKeyboardButton(text=f"{g['title']}", callback_data=f"team_game_{g['id']}")]
+            for g in games
+        ]
+
+        await callback.message.answer("Выберите игру:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb))
+        await callback.answer()
+        log("Клавиатура с играми отправлена")
+
+    except Exception as e:
+        log(f"Ошибка в team_reg_game: {e}")
+        await callback.message.answer("Произошла ошибка.")
+        await callback.answer()
 
 
 @dp.callback_query(F.data.startswith("team_game_"))
 async def register_team(callback: types.CallbackQuery):
-    game_id = int(callback.data.split("_")[2])
+    log("team_game_: вход в хендлер")
 
-    conn = get_db()
-    cur = conn.cursor()
+    try:
+        game_id = int(callback.data.split("_")[2])
+        log(f"Выбран game_id={game_id}")
 
-    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
-    team = cur.fetchone()["team_id"]
+        conn = get_db()
+        cur = conn.cursor()
 
-    cur.execute("INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)", (team, game_id))
-    conn.commit()
+        log(f"Проверяем команду для user_id={callback.from_user.id}")
+        cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
+        row = cur.fetchone()
+        log(f"Результат запроса команды: {row}")
 
-    await callback.message.answer("Команда записана!")
-    await callback.answer()
+        team = row["team_id"]
 
+        log(f"Пытаемся записать team_id={team} на game_id={game_id}")
+        cur.execute("INSERT OR IGNORE INTO team_games (team_id, game_id) VALUES (?, ?)", (team, game_id))
+        conn.commit()
+
+        log("Запись успешно внесена (или уже была).")
+        await callback.message.answer("Команда записана!")
+        await callback.answer()
+
+    except Exception as e:
+        log(f"Ошибка в team_game_: {e}")
+        await callback.message.answer("Произошла ошибка при записи.")
+        await callback.answer()
 
 # --------------------------
 # Игрок записывается на игру
