@@ -92,6 +92,12 @@ async def register_team_on_quizplease(
     players_count: int = 5,
     comment: str = "Автозапись"
 ):
+    async with aiohttp.ClientSession() as s:
+        r = await s.get(f"https://quizplease.ru/game-page?id={game_id}")
+        html = await r.text()
+        with open("/mnt/data/game.html", "w", encoding="utf-8") as f:
+            f.write(html)
+        
     url = f"https://quizplease.ru/game-page?id={game_id}"
     base_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
