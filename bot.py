@@ -273,7 +273,7 @@ async def register_team(callback: types.CallbackQuery):
             # Запись в БД о регистрации команды на игру
             cur.execute(
                 "INSERT OR IGNORE INTO team_games (team_id, game_id, code) VALUES (?, ?)",
-                (team_id, g["id"])
+                (team_id, game_id)
             )
             conn.commit()
             log(f"Регистрация команды '{team_name}' на игру '{game_id}' выполнена (код: {code})")
@@ -281,7 +281,7 @@ async def register_team(callback: types.CallbackQuery):
             # Запись в БД о регистрации команды на игру
             cur.execute(
                 "INSERT OR IGNORE INTO team_games (team_id, game_id, code) VALUES (?, ?)",
-                (team_id, g["id"])
+                (team_id, game_id)
             )
             conn.commit()
             log(f"Регистрация команды '{team_name}' на игру '{game_id}' не удалась: (код:{code}) - {message}")
