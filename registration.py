@@ -90,8 +90,16 @@ async def auto_register_teams():
 
 # --------------------------
 #запись команды на игру
-# --------------------------
-async def fetch_game_page(game_id):
+# --------------------------  
+async def register_team_on_quizplease(
+    game_id: int,
+    team_name: str,
+    captain_name: str,
+    email: str,
+    phone: str,
+    players_count: int = 5,
+    comment: str = "Автозапись"
+):
     async with aiohttp.ClientSession() as s:
         headers = {
             "User-Agent": random.choice(USER_AGENTS),
@@ -107,19 +115,6 @@ async def fetch_game_page(game_id):
     # сохраняем
     with open("game.html", "w", encoding="utf-8") as f:
         f.write(html)
-
-    return html
-    
-async def register_team_on_quizplease(
-    game_id: int,
-    team_name: str,
-    captain_name: str,
-    email: str,
-    phone: str,
-    players_count: int = 5,
-    comment: str = "Автозапись"
-):
-    adf = fetch_game_page(game_id)
         
     url = f"https://quizplease.ru/game-page?id={game_id}"
     base_headers = {
