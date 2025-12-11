@@ -248,7 +248,7 @@ async def register_team(callback: types.CallbackQuery):
         log(f"Проверяем команду для user_id={callback.from_user.id}")
         cur.execute("SELECT * FROM teams WHERE id IN (SELECT team_id FROM player_teams WHERE user_id=?)", (callback.from_user.id,))
         team = cur.fetchone()
-        log(f"Результат запроса команды: {row}")
+        log(f"Результат запроса команды: {team}")
 
        
         team_id = team["id"]
