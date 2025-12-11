@@ -37,8 +37,8 @@ async def auto_register_teams():
         captain_name = team["captainName"] or "-"
         email = team["email"] or "-"
         phone = team["phone"] or "+"
-        whitelist = team.get("whitelist", "").split(",")  # ключевые слова белого списка
-        blacklist = team.get("blacklist", "").split(",")  # ключевые слова черного списка
+        whitelist = (team["whitelist"] or "").split(",")  # ключевые слова белого списка
+        blacklist = (team["blacklist"] or "").split(",")  # ключевые слова черного списка
         # Получаем игры, на которые команда ещё не записана
         cur.execute("""
             SELECT * FROM games g
