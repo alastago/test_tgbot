@@ -261,9 +261,9 @@ async def register_team(callback: types.CallbackQuery):
         log(f"Пытаемся записать team_id={team_id} на game_id={game_id}")
         # Пытаемся зарегистрировать
         code, message = await register_team_on_quizplease(
-            game_id=g["id"],
-            team_name=team_name,
-            captain_name=captain_name,
+            game_id,
+            team_name,
+            captain_name,
             email=email,
             phone=phone,
             players_count=5,
