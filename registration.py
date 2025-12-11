@@ -4,6 +4,9 @@ from datetime import datetime
 from config import *
 from dataset.database import *
 import re
+import random
+import time
+from html.parser import HTMLParser
 
 
 def log(text: str):
@@ -11,6 +14,12 @@ def log(text: str):
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
 
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+]
 
 # --------------------------
 #Автозапись команд на новые игры
@@ -93,10 +102,17 @@ async def register_team_on_quizplease(
     comment: str = "Автозапись"
 ):
     async with aiohttp.ClientSession() as s:
-        r = await s.get(f"https://quizplease.ru/game-page?id={game_id}")
-        html = await r.text()
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://quizplease.ru/",
+            "Connection": "keep-alive",
+        }
+        async with session.get(f"https://quizplease.ru/game-page?id={game_id}", headers=headers) as r:
+            html = await r.text()
         with open("game.html", "w", encoding="utf-8") as f:
-            f.write(html)
+        f.write(html)
         
     url = f"https://quizplease.ru/game-page?id={game_id}"
     base_headers = {
