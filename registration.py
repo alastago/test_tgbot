@@ -111,7 +111,9 @@ async def register_team_on_quizplease(
         "Accept": "application/json, text/javascript, */*; q=0.01",
         "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "User-Agent": random.choice(USER_AGENTS),
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/143.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": "https://krs.quizplease.ru/schedule",
         "Origin": "https://krs.quizplease.ru",
@@ -119,7 +121,7 @@ async def register_team_on_quizplease(
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Dest": "empty",
     }
-
+    
     # custom_fields_values — оставляем как в браузере
     custom_fields = [
         {
@@ -127,7 +129,7 @@ async def register_team_on_quizplease(
             "type": "text",
             "label": "ID/номер в Telegram",
             "placeholder": "",
-            "value": ""
+            "value": "-"
         }
     ]
 
@@ -155,11 +157,15 @@ async def register_team_on_quizplease(
     log(f"Регистрация команды '{team_name}' на игру {game_id}")
 
     timeout = aiohttp.ClientTimeout(total=20)
-
+    jar = aiohttp.CookieJar()
+    jar.update_cookies({
+        "city": "krs",   # 👈 обязательно
+    })
+    
     async with aiohttp.ClientSession(
         headers=headers,
         timeout=timeout,
-        cookie_jar=aiohttp.CookieJar()
+        cookie_jar=jar
     ) as session:
         try:
             async with session.post(url, data=encoded_payload) as response:
@@ -167,6 +173,16 @@ async def register_team_on_quizplease(
 
                 if response.status != 200:
                     log("Ошибка HTTP при регистрации")
+                    html = await resp.text()
+                         # сохраняем дамп
+                    try:
+                        with open(RESP_DUMP, "w", encoding="utf-8") as f:
+                            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
+                            f.write(html)
+                        log(f"Saved response dump: {RESP_DUMP}")
+                    except Exception as e:
+                        log(f"Failed saving resonse dump: {e}")    
+                        
                     return False
 
                 data = await response.json()
