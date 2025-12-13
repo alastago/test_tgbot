@@ -176,6 +176,13 @@ async def register_team_on_quizplease(
                     html = await response.text()
                          # сохраняем дамп
                     try:
+                        with open(REQ_DUMP, "w", encoding="utf-8") as f:
+                            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
+                            f.write(html)
+                        log(f"Saved response dump: {REQ_DUMP}")
+                    except Exception as e:
+                        log(f"Failed saving resonse dump: {e}")    
+                    try:
                         with open(RESP_DUMP, "w", encoding="utf-8") as f:
                             f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
                             f.write(html)
@@ -184,7 +191,7 @@ async def register_team_on_quizplease(
                         log(f"Failed saving resonse dump: {e}")    
                         
                     return False
-
+                
                 data = await response.json()
                 log(f"Ответ сервера: {data}")
 
