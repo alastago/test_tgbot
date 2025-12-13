@@ -173,7 +173,7 @@ async def register_team_on_quizplease(
 
                 if response.status != 200:
                     log("Ошибка HTTP при регистрации")
-                    html = await resp.text()
+                    html = await response.text()
                          # сохраняем дамп
                     try:
                         with open(RESP_DUMP, "w", encoding="utf-8") as f:
