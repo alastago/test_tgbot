@@ -29,13 +29,20 @@ MONTHS = {
     "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
 }
 
-
 def log(text: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
 
-
+async def warmup_session(session, headers):
+    log("Session warmup: GET /")
+    async with session.get(
+        "https://krs.quizplease.ru/",
+        headers=headers,
+        timeout=20
+    ) as resp:
+        await resp.text()
+        
 def looks_like_bot_block(html: str) -> bool:
     lower = html.lower()
     checks = [
@@ -159,15 +166,22 @@ class GamesParser(HTMLParser):
 
 async def fetch_games():
     log("Start fetch_games()")
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
         headers = {
             "User-Agent": random.choice(USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Referer": "https://quizplease.ru/",
-            "Connection": "keep-alive",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
+            "Referer": "https://krs.quizplease.ru/",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-User": "?1",
         }
         try:
+            await warmup_session(session, headers)
+            await asyncio.sleep(random.uniform(1.5, 3.5))
+            
             async with session.get(SCHEDULE_URL, headers=headers, timeout=30) as resp:
                 html = await resp.text()
                 status = resp.status
@@ -198,7 +212,7 @@ async def fetch_games():
 
         # соблюдаем Crawl-delay
         log(f"Sleeping {CRAWL_DELAY}s to respect robots.txt")
-        time.sleep(CRAWL_DELAY)
+        await asyncio.sleep(CRAWL_DELAY)
 
         return parser.games
 
