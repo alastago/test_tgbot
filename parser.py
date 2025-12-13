@@ -34,14 +34,7 @@ def log(text: str):
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
 
-async def warmup_session(session, headers):
-    log("Session warmup: GET /")
-    async with session.get(
-        "https://krs.quizplease.ru/",
-        headers=headers,
-        timeout=20
-    ) as resp:
-        await resp.text()
+
         
 def looks_like_bot_block(html: str) -> bool:
     lower = html.lower()
