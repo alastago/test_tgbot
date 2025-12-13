@@ -1,20 +1,37 @@
 import aiohttp
 import asyncio
-from datetime import datetime
-from config import *
-from dataset.database import *
 import re
 import json
 import urllib.parse
 import random
 import time
 from html.parser import HTMLParser
+import os
+from datetime import datetime
+
+from config import *
+from dataset.database import *
 
 
 def log(text: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOGFILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {text}\n")
+        
+def save_dump(prefix: str, data: dict | str):
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{DUMP_DIR}/{prefix}_{ts}.json"
+
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            if isinstance(data, str):
+                f.write(data)
+            else:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        log(f"Дамп сохранён: {filename}")
+    except Exception as e:
+        log(f"❌ Ошибка сохранения дампа {filename}: {e}")
+
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -99,42 +116,10 @@ async def register_team_on_quizplease(
     phone: str,
     players_count: int = 5,
     comment: str = "Автозапись"
-) -> bool:
-    """
-    Регистрирует команду на игру QuizPlease
-    Возвращает True при успехе
-    """
+) -> dict:
 
     url = "https://krs.quizplease.ru/ajax/save-record"
-
-    headers = {
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/143.0.0.0 Safari/537.36",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": "https://krs.quizplease.ru/schedule",
-        "Origin": "https://krs.quizplease.ru",
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-CH-UA": '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
-        "Sec-CH-UA-Mobile": "?0",
-        "Sec-CH-UA-Platform": '"Windows"',
-    }
-    
-    # custom_fields_values — оставляем как в браузере
-    custom_fields = [
-        {
-            "name": "d2302012-a826-49ab-904f-ee98548c7226",
-            "type": "text",
-            "label": "ID/номер в Telegram",
-            "placeholder": "",
-            "value": "-"
-        }
-    ]
+    referer = "https://krs.quizplease.ru/schedule"
 
     payload = {
         "record-from-form": "1",
@@ -143,118 +128,87 @@ async def register_team_on_quizplease(
         "QpRecord[email]": email,
         "QpRecord[phone]": phone,
         "QpRecord[count]": str(players_count),
-        "QpRecord[custom_fields_values]": json.dumps(custom_fields, ensure_ascii=False),
         "QpRecord[comment]": comment,
         "QpRecord[game_id]": str(game_id),
+
         "QpRecord[reserve]": "0",
         "reservation": "",
         "QpRecord[site_content_id]": "",
         "have_cert": "1",
         "certificates[]": "",
-        "QpRecord[payment_type]": "2",
+        "QpRecord[payment_type]": "1",
+        "QpRecord[surcharge]": "1",
         "QpRecord[is_agreed_to_mailing]": "1",
+
+        "QpRecord[custom_fields_values]": (
+            '[{"name":"494837f9-ed38-42d0-b923-8beb3f324fa9",'
+            '"type":"text","label":"ID/номер в Telegram",'
+            '"placeholder":"","value":"-"}]'
+        )
     }
 
-    encoded_payload = urllib.parse.urlencode(payload)
-    timeout = aiohttp.ClientTimeout(total=20)
-    jar = aiohttp.CookieJar()
-    jar.update_cookies({
-        "city": "krs",   # 👈 обязательно
-    })
+    headers = {
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "ru,en;q=0.9",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": referer,
+        "Origin": "https://krs.quizplease.ru",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/143.0.0.0 Safari/537.36"
+        )
+    }
 
-    
-    # сохраняем дамп
-    try:
-        with open(REQ_DUMP, "w", encoding="utf-8") as f:
-            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-            f.write(encoded_payload)
-        log(f"Saved request dump: {REQ_DUMP}")
-    except Exception as e:
-        log(f"Failed saving request dump: {e}")    
+    log(f"▶ Регистрация команды '{team_name}' на игру {game_id}")
 
-    
-    log(f"Регистрация команды '{team_name}' на игру {game_id}")
-    for attempt in range(1, MAX_RETRIES + 1):
-        log(f"Попытка {attempt} из {MAX_RETRIES}")
-        
-        async with aiohttp.ClientSession(
-            headers=headers,
-            timeout=timeout,
-            cookie_jar=jar
-        ) as session:
-            try:
-                # 1️⃣ прогрев — главная страница
-                log("Warmup: GET /main")
-                async with session.get(
-                    "https://krs.quizplease.ru/",
-                    timeout=20
-                ) as resp:
-                    await resp.text()
-                await asyncio.sleep(random.uniform(3.5, 5.5))
-                
-                log("Warmup: GET /schedule")
-                async with session.get(
-                    "https://krs.quizplease.ru/schedule",
-                    timeout=20
-                ) as resp:
-                    await resp.text()
-                await asyncio.sleep(random.uniform(3.5, 5.5))
-    
-                log("Warmup: GET /game-page")
-                async with session.get(
-                    f"https://krs.quizplease.ru/game-page?id={game_id}",
-                    timeout=20
-                ) as resp:
-                    html = await resp.text()
-                    with open("/app/respGame.html", "w", encoding="utf-8") as f:
-                        f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-                        f.write(html)
-                    log(f"Saved response dump: /app/respGame.html")
-                    
-                await asyncio.sleep(random.uniform(4, 7))
-                
-                async with session.post(url, data=encoded_payload) as response:
-                    log(f"HTTP статус: {response.status}")
+    cookie_jar = aiohttp.CookieJar(unsafe=True)
+
+    async with aiohttp.ClientSession(
+        headers=headers,
+        cookie_jar=cookie_jar
+    ) as session:
+
+        # 🔹 предварительный GET — сервер часто кладёт нужные cookies
+        log("GET /schedule для получения cookies")
+        async with session.get(referer) as r:
+            log(f"GET /schedule status={r.status}")
+            raw_text = await r.text()
+            save_dump("quizplease_schedule_response", raw_text)
             
-                    if response.status != 200:
-                        log("Ошибка HTTP при регистрации")
-                        html = await response.text()
-                        # сохраняем дамп   
-                        try:
-                            with open(RESP_DUMP, "w", encoding="utf-8") as f:
-                                f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-                                f.write(html)
-                            log(f"Saved response dump: {RESP_DUMP}")
-                        except Exception as e:
-                            log(f"Failed saving response dump: {e}")    
-                        # Если это не последняя попытка, ждём немного и пробуем снова
-                        if attempt < MAX_RETRIES:
-                            await asyncio.sleep(random.uniform(2, 5))
-                            continue    
-                        return False
-                    
-                    data = await response.json()
-                    log(f"Ответ сервера: {data}")
-    
-                    if data.get("success"):
-                        log("✅ Команда успешно зарегистрирована")
-                        return True
-    
-                    log("❌ Сервер вернул success=false")
-                    if attempt < MAX_RETRIES:
-                        await asyncio.sleep(random.uniform(2, 5))
-                        continue
-                    return False
-    
-            except aiohttp.ClientError as e:
-                log(f"❌ Ошибка сети: {e}")
-                if attempt < MAX_RETRIES:
-                    await asyncio.sleep(random.uniform(2, 5))
-                    continue
-                return False
+        encoded_payload = urlencode(payload)
+
+        save_dump(
+            prefix="quizplease_request",
+            data={
+                "url": url,
+                "headers": headers,
+                "payload": payload
+            }
+        )
+
+        log("POST /ajax/save-record")
+        async with session.post(
+            url,
+            data=encoded_payload
+        ) as resp:
+
+            raw_text = await resp.text()
+            log(f"POST status={resp.status}")
+            save_dump("quizplease_raw_response", raw_text)
+
+            try:
+                json_response = await resp.json()
             except Exception as e:
-                log(f"❌ Неизвестная ошибка: {e}")
-                if attempt < MAX_RETRIES:
-                    await asyncio.sleep(random.uniform(2, 5))
-                    continue
-                return False
+                log(f"❌ Ошибка парсинга JSON: {e}")
+                raise
+
+    save_dump("quizplease_parsed_response", json_response)
+
+    if json_response.get("success"):
+        log("✅ Успешная регистрация")
+    else:
+        log(f"❌ Ошибка регистрации: {json_response}")
+
+    return json_response
