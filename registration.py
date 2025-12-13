@@ -209,7 +209,7 @@ async def register_team_on_quizplease(
                     with open("/app/respGame.html", "w", encoding="utf-8") as f:
                         f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
                         f.write(resp.text())
-                    log(f"Saved response dump: /app/respGame.html"")
+                    log(f"Saved response dump: /app/respGame.html")
                     
                 await asyncio.sleep(random.uniform(4, 7))
                 
