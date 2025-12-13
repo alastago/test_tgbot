@@ -260,7 +260,7 @@ async def register_team(callback: types.CallbackQuery):
 
         log(f"Пытаемся записать team_id={team_id} на game_id={game_id}")
         # Пытаемся зарегистрировать
-        code, message = await register_team_on_quizplease(
+        await register_team_on_quizplease(
             game_id,
             team_name,
             captain_name,
@@ -269,24 +269,6 @@ async def register_team(callback: types.CallbackQuery):
             players_count=5,
             comment="Тестовая запись. Команды не существует."
         )
-        if code in ("1", "4", "5"):  # успешные варианты
-            # Запись в БД о регистрации команды на игру
-            cur.execute(
-                "INSERT OR IGNORE INTO team_games (team_id, game_id, code) VALUES (?, ?)",
-                (team_id, game_id)
-            )
-            conn.commit()
-            log(f"Регистрация команды '{team_name}' на игру '{game_id}' выполнена (код: {code})")
-        else:
-            # Запись в БД о регистрации команды на игру
-            cur.execute(
-                "INSERT OR IGNORE INTO team_games (team_id, game_id, code) VALUES (?, ?)",
-                (team_id, game_id)
-            )
-            conn.commit()
-            log(f"Регистрация команды '{team_name}' на игру '{game_id}' не удалась: (код:{code}) - {message}")
-            
-        
         await callback.message.answer("Команда записана!")
         await callback.answer()
 
