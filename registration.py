@@ -205,10 +205,10 @@ async def register_team_on_quizplease(
                     f"https://krs.quizplease.ru/game-page?id={game_id}",
                     timeout=20
                 ) as resp:
-                    await resp.text()
+                    html = await resp.text()
                     with open("/app/respGame.html", "w", encoding="utf-8") as f:
                         f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-                        f.write(resp.text())
+                        f.write(html)
                     log(f"Saved response dump: /app/respGame.html")
                     
                 await asyncio.sleep(random.uniform(4, 7))
