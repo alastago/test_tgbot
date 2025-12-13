@@ -174,60 +174,75 @@ async def register_team_on_quizplease(
 
     
     log(f"Регистрация команды '{team_name}' на игру {game_id}")
-    async with aiohttp.ClientSession(
-        headers=headers,
-        timeout=timeout,
-        cookie_jar=jar
-    ) as session:
-        try:
-            # 1️⃣ прогрев — главная страница
-            log("Warmup: GET /main")
-            async with session.get(
-                "https://krs.quizplease.ru/",
-                timeout=20
-            ) as resp:
-                await resp.text()
-            await asyncio.sleep(random.uniform(3.5, 5.5))
-            
-            log("Warmup: GET /schedule")
-            async with session.get(
-                "https://krs.quizplease.ru/schedule",
-                timeout=20
-            ) as resp:
-                await resp.text()
-            await asyncio.sleep(random.uniform(3.5, 5.5))
-
-            
-            async with session.post(url, data=encoded_payload) as response:
-                log(f"HTTP статус: {response.status}")
+    for attempt in range(1, MAX_RETRIES + 1):
+        log(f"Попытка {attempt} из {MAX_RETRIES}")
         
-                if response.status != 200:
-                    log("Ошибка HTTP при регистрации")
-                    html = await response.text()
-                    # сохраняем дамп   
-                    try:
-                        with open(RESP_DUMP, "w", encoding="utf-8") as f:
-                            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-                            f.write(html)
-                        log(f"Saved response dump: {RESP_DUMP}")
-                    except Exception as e:
-                        log(f"Failed saving response dump: {e}")    
-                        
-                    return False
+        async with aiohttp.ClientSession(
+            headers=headers,
+            timeout=timeout,
+            cookie_jar=jar
+        ) as session:
+            try:
+                # 1️⃣ прогрев — главная страница
+                log("Warmup: GET /main")
+                async with session.get(
+                    "https://krs.quizplease.ru/",
+                    timeout=20
+                ) as resp:
+                    await resp.text()
+                await asyncio.sleep(random.uniform(3.5, 5.5))
                 
-                data = await response.json()
-                log(f"Ответ сервера: {data}")
-
-                if data.get("success"):
-                    log("✅ Команда успешно зарегистрирована")
-                    return True
-
-                log("❌ Сервер вернул success=false")
+                log("Warmup: GET /schedule")
+                async with session.get(
+                    "https://krs.quizplease.ru/schedule",
+                    timeout=20
+                ) as resp:
+                    await resp.text()
+                await asyncio.sleep(random.uniform(3.5, 5.5))
+    
+                
+                async with session.post(url, data=encoded_payload) as response:
+                    log(f"HTTP статус: {response.status}")
+            
+                    if response.status != 200:
+                        log("Ошибка HTTP при регистрации")
+                        html = await response.text()
+                        # сохраняем дамп   
+                        try:
+                            with open(RESP_DUMP, "w", encoding="utf-8") as f:
+                                f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
+                                f.write(html)
+                            log(f"Saved response dump: {RESP_DUMP}")
+                        except Exception as e:
+                            log(f"Failed saving response dump: {e}")    
+                        # Если это не последняя попытка, ждём немного и пробуем снова
+                        if attempt < MAX_RETRIES:
+                            await asyncio.sleep(random.uniform(2, 5))
+                            continue    
+                        return False
+                    
+                    data = await response.json()
+                    log(f"Ответ сервера: {data}")
+    
+                    if data.get("success"):
+                        log("✅ Команда успешно зарегистрирована")
+                        return True
+    
+                    log("❌ Сервер вернул success=false")
+                    if attempt < MAX_RETRIES:
+                        await asyncio.sleep(random.uniform(2, 5))
+                        continue
+                    return False
+    
+            except aiohttp.ClientError as e:
+                log(f"❌ Ошибка сети: {e}")
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(random.uniform(2, 5))
+                    continue
                 return False
-
-        except aiohttp.ClientError as e:
-            log(f"❌ Ошибка сети: {e}")
-            return False
-        except Exception as e:
-            log(f"❌ Неизвестная ошибка: {e}")
-            return False
+            except Exception as e:
+                log(f"❌ Неизвестная ошибка: {e}")
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(random.uniform(2, 5))
+                    continue
+                return False
