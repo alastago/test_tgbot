@@ -4,6 +4,8 @@ from datetime import datetime
 from config import *
 from dataset.database import *
 import re
+import json
+import urllib.parse
 import random
 import time
 from html.parser import HTMLParser
@@ -16,9 +18,7 @@ def log(text: str):
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+    "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 ]
 
 # --------------------------
@@ -99,99 +99,89 @@ async def register_team_on_quizplease(
     phone: str,
     players_count: int = 5,
     comment: str = "Автозапись"
-):
-    async with aiohttp.ClientSession() as s:
-        headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Referer": "https://quizplease.ru/",
-            "Connection": "keep-alive",
-        }
+) -> bool:
+    """
+    Регистрирует команду на игру QuizPlease
+    Возвращает True при успехе
+    """
 
-        async with s.get(f"https://quizplease.ru/game-page?id={game_id}", headers=headers) as r:
-            html = await r.text()
+    url = "https://krs.quizplease.ru/ajax/save-record"
 
-    # сохраняем
-    with open("game.html", "w", encoding="utf-8") as f:
-        f.write(html)
-        
-    url = f"https://quizplease.ru/game-page?id={game_id}"
-    base_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Upgrade-Insecure-Requests": "1",
-        "Referer": url,
-        "Origin": "https://quizplease.ru",
+    headers = {
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": random.choice(USER_AGENTS),
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://krs.quizplease.ru/schedule",
+        "Origin": "https://krs.quizplease.ru",
         "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
-        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
     }
-    
-    async with aiohttp.ClientSession() as session:
-        # ---------- 1. GET HTML для получения cookie и CSRF ----------
-        async with session.get(url, headers=base_headers) as r:
-            log(f"GET page -> {r.status}")
-            html = await r.text()
-            cookies = session.cookie_jar.filter_cookies("https://quizplease.ru")
-            log(f"Полученные куки: {cookies}")
 
-        # ---------- 2. Достаём CSRF ----------
-        m = re.search(r'name="csrf-token" content="(.+?)"', html)
-        csrf = m.group(1) if m else None
-        log(f"CSRF = {csrf}")
-
-        if not csrf:
-            log("❌ CSRF не найден — 100% будет капча")
-        
-        # ---------- 3. Формируем POST ----------
-        post_headers = base_headers.copy()
-        post_headers["Content-Type"] = "application/x-www-form-urlencoded"
-        
-        data = {
-            "_csrf": csrf,
-            "record-from-form": "1",
-            "QpRecord[teamName]": team_name,
-            "QpRecord[captainName]": captain_name,
-            "QpRecord[email]": email,
-            "QpRecord[phone]": phone,
-            "QpRecord[count]": str(players_count),
-            "QpRecord[comment]": comment,
-            "QpRecord[custom_fields_values]": "[]",
-            "QpRecord[first_time]": "0",
-            "certificates[]": "",
-            "QpRecord[is_agreed_to_mailing]": "1",
-            "QpRecord[game_id]": str(game_id),
-            "QpRecord[max_people_active]": "",
-            "reservation": "",
-            "QpRecord[site_content_id]": "",
+    # custom_fields_values — оставляем как в браузере
+    custom_fields = [
+        {
+            "name": "d2302012-a826-49ab-904f-ee98548c7226",
+            "type": "text",
+            "label": "ID/номер в Telegram",
+            "placeholder": "",
+            "value": ""
         }
-         # ---------- 4. Делаем POST ----------
+    ]
+
+    payload = {
+        "record-from-form": "1",
+        "QpRecord[teamName]": team_name,
+        "QpRecord[captainName]": captain_name,
+        "QpRecord[email]": email,
+        "QpRecord[phone]": phone,
+        "QpRecord[count]": str(players_count),
+        "QpRecord[custom_fields_values]": json.dumps(custom_fields, ensure_ascii=False),
+        "QpRecord[comment]": comment,
+        "QpRecord[game_id]": str(game_id),
+        "QpRecord[reserve]": "0",
+        "reservation": "",
+        "QpRecord[site_content_id]": "",
+        "have_cert": "1",
+        "certificates[]": "",
+        "QpRecord[payment_type]": "2",
+        "QpRecord[is_agreed_to_mailing]": "1",
+    }
+
+    encoded_payload = urllib.parse.urlencode(payload)
+
+    log(f"Регистрация команды '{team_name}' на игру {game_id}")
+
+    timeout = aiohttp.ClientTimeout(total=20)
+
+    async with aiohttp.ClientSession(
+        headers=headers,
+        timeout=timeout,
+        cookie_jar=aiohttp.CookieJar()
+    ) as session:
         try:
-            async with session.post(url, data=data, headers=post_headers, allow_redirects=False) as resp:
-                log(f"POST -> {resp.status}")
-                log(f"Location: {resp.headers.get('Location')}")
-             # Проверяем success
-                if "success=" in location:
-                    code = location.split("success=")[1]
-                    code_map = {
-                        "1": "Спасибо, что записались! (Успех)",
-                        "2": "Упс! Что-то пошло не так. (Запись не выполнена)",
-                        "3": "Команда с таким названием уже зарегистрирована на один из дней пакета. (Запись не выполнена)",
-                        "4": "Вы поставлены в очередь на регистрацию. (Запись выполнена, вид записи неизвестен)",
-                        "5": "Отлично! Вы записаны в резерв. (Запись выполнена в резерв)",
-                        "6": "Упс, места на игру уже закончились. (Запись не выполнена)"
-                    }
-                    message = code_map.get(code, f"Неизвестный код success={code}")
-                    log(f"Результат регистрации: {message}")
-                    return code, message
-                else:
-                    text = await resp.text()
-                    log(f"Регистрация не прошла, нет success в Location - {location}. Ответ сервера: {text[:200]}...")
-                    return None, "Нет success в Location"
+            async with session.post(url, data=encoded_payload) as response:
+                log(f"HTTP статус: {response.status}")
+
+                if response.status != 200:
+                    log("Ошибка HTTP при регистрации")
+                    return False
+
+                data = await response.json()
+                log(f"Ответ сервера: {data}")
+
+                if data.get("success"):
+                    log("✅ Команда успешно зарегистрирована")
+                    return True
+
+                log("❌ Сервер вернул success=false")
+                return False
+
+        except aiohttp.ClientError as e:
+            log(f"❌ Ошибка сети: {e}")
+            return False
         except Exception as e:
-            log(f"Ошибка при регистрации команды: {e}")
-            return None, str(e)
+            log(f"❌ Неизвестная ошибка: {e}")
+            return False
