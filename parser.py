@@ -166,23 +166,49 @@ class GamesParser(HTMLParser):
 
 async def fetch_games():
     log("Start fetch_games()")
-    async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
-        headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
-            "Referer": "https://krs.quizplease.ru/",
+    headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/143.0.0.0 Safari/537.36",
+        
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                      "image/avif,image/webp,image/apng,*/*;q=0.8,"
+                      "application/signed-exchange;v=b3;q=0.7",
+        
+            "Accept-Language": "en-RU,en;q=0.9,ru-RU;q=0.8,ru;q=0.7",
+        
+            "Accept-Encoding": "gzip, deflate, br",
+        
             "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "navigate",
+        
             "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-        }
+        
+            "Referer": "https://krs.quizplease.ru/",
+    }
+    jar = aiohttp.CookieJar()
+    jar.update_cookies({
+        "city": "krs",   # 👈 обязательно
+    })
+    async with aiohttp.ClientSession(
+        cookie_jar=jar,
+        headers=headers
+    ) as session:
         try:
-            await warmup_session(session, headers)
+            # 1️⃣ прогрев — главная страница
+            log("Warmup: GET /")
+            async with session.get(
+                "https://krs.quizplease.ru/",
+                timeout=20
+            ) as resp:
+                await resp.text()
+    
             await asyncio.sleep(random.uniform(1.5, 3.5))
-            
-            async with session.get(SCHEDULE_URL, headers=headers, timeout=30) as resp:
+            # 2️⃣ реальный запрос расписания
+            log("Fetching /schedule")
+            async with session.get(SCHEDULE_URL, timeout=30) as resp:
                 html = await resp.text()
                 status = resp.status
         except Exception as e:
