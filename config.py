@@ -4,5 +4,7 @@ SCHEDULE_URL = "https://quizplease.ru/schedule?QpGameSearch%5BcityId%5D=41&QpGam
 
 # Пути логов, дампа HTML, Базы даннных
 DB_PATH = "data/bot.db"   # или твой путь
-LOGFILE = "/tmp/parser_quizplease.log"
-HTML_DUMP = "/tmp/quizplease_last.html"
+LOGFILE = "/app/parser_quizplease.log"
+HTML_DUMP = "/app/quizplease_last.html"
+REQ_DUMP = "/app/req.html"
+RESP_DUMP = "/app/restonse.html"
