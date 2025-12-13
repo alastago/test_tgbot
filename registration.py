@@ -200,6 +200,14 @@ async def register_team_on_quizplease(
                     await resp.text()
                 await asyncio.sleep(random.uniform(3.5, 5.5))
     
+                log("Warmup: GET /game-page")
+                async with session.get(
+                    f"https://krs.quizplease.ru/game-page?id={game_id}",
+                    timeout=20
+                ) as resp:
+                    await resp.text()
+                
+                await asyncio.sleep(random.uniform(4, 7))
                 
                 async with session.post(url, data=encoded_payload) as response:
                     log(f"HTTP статус: {response.status}")
