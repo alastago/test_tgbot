@@ -5,9 +5,8 @@ SCHEDULE_URL = "https://quizplease.ru/schedule?QpGameSearch%5BcityId%5D=41&QpGam
 # Пути логов, дампа HTML, Базы даннных
 DB_PATH = "data/bot.db"   # или твой путь
 LOGFILE = "/app/parser_quizplease.log"
+DUMP_DIR = "/app"
 HTML_DUMP = "/app/quizplease_last.html"
-REQ_DUMP = "/app/req.html"
-RESP_DUMP = "/app/response.html"
 
 #Запись команды на игру
 MAX_RETRIES = 3
