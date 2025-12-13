@@ -120,6 +120,9 @@ async def register_team_on_quizplease(
         "Sec-Fetch-Site": "same-origin",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Dest": "empty",
+        "Sec-CH-UA": '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        "Sec-CH-UA-Mobile": "?0",
+        "Sec-CH-UA-Platform": '"Windows"',
     }
     
     # custom_fields_values — оставляем как в браузере
@@ -153,42 +156,62 @@ async def register_team_on_quizplease(
     }
 
     encoded_payload = urllib.parse.urlencode(payload)
-
-    log(f"Регистрация команды '{team_name}' на игру {game_id}")
-
     timeout = aiohttp.ClientTimeout(total=20)
     jar = aiohttp.CookieJar()
     jar.update_cookies({
         "city": "krs",   # 👈 обязательно
     })
+
     
+    # сохраняем дамп
+    try:
+        with open(REQ_DUMP, "w", encoding="utf-8") as f:
+            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
+            f.write(encoded_payload)
+        log(f"Saved request dump: {REQ_DUMP}")
+    except Exception as e:
+        log(f"Failed saving request dump: {e}")    
+
+    
+    log(f"Регистрация команды '{team_name}' на игру {game_id}")
     async with aiohttp.ClientSession(
         headers=headers,
         timeout=timeout,
         cookie_jar=jar
     ) as session:
         try:
+            # 1️⃣ прогрев — главная страница
+            log("Warmup: GET /main")
+            async with session.get(
+                "https://krs.quizplease.ru/",
+                timeout=20
+            ) as resp:
+                await resp.text()
+            await asyncio.sleep(random.uniform(3.5, 5.5))
+            
+            log("Warmup: GET /schedule")
+            async with session.get(
+                "https://krs.quizplease.ru/schedule",
+                timeout=20
+            ) as resp:
+                await resp.text()
+            await asyncio.sleep(random.uniform(3.5, 5.5))
+
+            
             async with session.post(url, data=encoded_payload) as response:
                 log(f"HTTP статус: {response.status}")
-
+        
                 if response.status != 200:
                     log("Ошибка HTTP при регистрации")
                     html = await response.text()
-                         # сохраняем дамп
-                    try:
-                        with open(REQ_DUMP, "w", encoding="utf-8") as f:
-                            f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
-                            f.write(html)
-                        log(f"Saved response dump: {REQ_DUMP}")
-                    except Exception as e:
-                        log(f"Failed saving resonse dump: {e}")    
+                    # сохраняем дамп   
                     try:
                         with open(RESP_DUMP, "w", encoding="utf-8") as f:
                             f.write(f"<!-- fetched: {datetime.utcnow().isoformat()} UTC -->\n")
                             f.write(html)
                         log(f"Saved response dump: {RESP_DUMP}")
                     except Exception as e:
-                        log(f"Failed saving resonse dump: {e}")    
+                        log(f"Failed saving response dump: {e}")    
                         
                     return False
                 
