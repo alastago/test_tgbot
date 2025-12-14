@@ -16,5 +16,6 @@ def games_menu():
         [InlineKeyboardButton(text="Список игр", callback_data="list_games")],
         [InlineKeyboardButton(text="Записать команду", callback_data="team_reg_game")],
         
+        [InlineKeyboardButton(text="📝 Записаться на игру (игрок)", callback_data="player_signup_games")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
