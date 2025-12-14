@@ -280,54 +280,78 @@ async def register_team(callback: types.CallbackQuery):
 # --------------------------
 # Игрок записывается на игру
 # --------------------------
-@dp.callback_query(F.data == "player_reg_game")
-async def player_choose_game(callback: types.CallbackQuery):
-    conn = get_db()
+
+async def get_available_games_for_player(conn, user_id: int):
     cur = conn.cursor()
 
-    # находим команду игрока
-    cur.execute("SELECT team_id FROM players WHERE user_id=?", (callback.from_user.id,))
-    t = cur.fetchone()["team_id"]
-
-    if not t:
-        await callback.message.answer("Вы не в команде.")
-        return
-
-    # игры, куда записана команда
     cur.execute("""
-        SELECT g.id, g.title FROM games g
-        JOIN team_games tg ON tg.game_id = g.id
-        WHERE tg.team_id=?
-    """, (t,))
-    games = cur.fetchall()
+        SELECT DISTINCT
+            g.id,
+            g.datetext,
+            g.title,
+            g.bar,
+            t.name
+        FROM games g
+        JOIN team_games tg ON tg.game_id = g.id AND tg.signup_status = 1
+        JOIN player_teams pt ON pt.team_id = tg.team_id
+        JOIN teams t ON t.id = tg.team_id
+        LEFT JOIN player_games pg
+            ON pg.game_id = g.id AND pg.user_id = ?
+        WHERE
+            pt.user_id = ?
+            AND pg.user_id IS NULL
+        ORDER BY g.date
+    """, (user_id, user_id))
+
+    return cur.fetchall()
+
+
+@router.callback_query(F.data == "player_signup_games")
+async def show_games_for_signup(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+
+    games = await get_available_games_for_player(db, user_id)
 
     if not games:
-        await callback.message.answer("Ваша команда не записана ни на одну игру.")
+        await callback.answer(
+            "❌ Нет доступных игр для записи",
+            show_alert=True
+        )
         return
 
-    kb = [
-        [types.InlineKeyboardButton(text=g['title'], callback_data=f"player_game_{g['id']}")]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=f"📅 {g[1]} | {g[2]} | {g[4]}",
+                callback_data=f"player_join_game_{g[0]}"
+            )
+        ]
         for g in games
-    ]
+    ])
 
-    await callback.message.answer("Выберите игру:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb))
+    await callback.message.answer(
+        "Выберите игру для записи:",
+        reply_markup=keyboard
+    )
     await callback.answer()
+    
+@router.callback_query(F.data.startswith("player_join_game_"))
+async def player_join_game(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    game_id = int(callback.data.split("_")[-1])
 
+    success, message = await register_player_on_game(
+        conn=db,
+        user_id=user_id,
+        game_id=game_id
+    )
 
-@dp.callback_query(F.data.startswith("player_game_"))
-async def register_player(callback: types.CallbackQuery):
-    game_id = int(callback.data.split("_")[2])
+    await callback.answer(message, show_alert=not success)
 
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("INSERT OR IGNORE INTO player_games (user_id, game_id) VALUES (?, ?)",
-                (callback.from_user.id, game_id))
-    conn.commit()
-
-    await callback.message.answer("Вы записаны!")
-    await callback.answer()
-
+    if success:
+        await callback.message.edit_text(
+            "✅ Вы успешно записались на игру!"
+        )
 
 # --------------------------
 # RUN
