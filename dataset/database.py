@@ -63,6 +63,15 @@ def init_db():
         PRIMARY KEY (team_id, game_id)
     );
     """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS player_games (
+        user_id INTEGER,
+        game_id INTEGER,
+        team_id INTEGER,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, game_id)
+    );
+    """)
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS player_teams (
