@@ -58,11 +58,31 @@ def init_db():
     CREATE TABLE IF NOT EXISTS team_games (
         team_id INTEGER,
         game_id INTEGER,
-        signup_status INTEGER DEFAULT 0,
+        signup_request_counter INTEGER DEFAULT 0,
+        signup_status_id INTEGER DEFAULT 0,
         notification_status INTEGER DEFAULT 0,
         PRIMARY KEY (team_id, game_id)
     );
     """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS signup_statuses (
+        id INTEGER PRIMARY KEY,
+        description TEXT
+    );
+    """)
+    signup_statuses = []
+    signup_statuses.append(0, "Запрос не выполнен")
+    signup_statuses.append(1, "Успешная запись")
+    signup_statuses.append(2, "Запись не выполнена. Неизвестная ошибка")
+    signup_statuses.append(3, "Запись не выполнена. Команда с таким названием уже записана")
+    signup_statuses.append(4, "Запись не выполнена. В очереди на обработку")
+    signup_statuses.append(5, "Запись в резерв")
+    signup_statuses.append(6, "Запись не выполнена. Мест нет")
+    cur.executemany("""
+    INSERT INTO signup_statuses (id, description)
+            VALUES (?, ?)
+    """, signup_statuses)
+    
     cur.execute("""
     CREATE TABLE IF NOT EXISTS player_games (
         user_id INTEGER,
