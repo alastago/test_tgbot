@@ -306,7 +306,7 @@ async def get_available_games_for_player(conn, user_id: int):
     return cur.fetchall()
 
 
-@router.callback_query(F.data == "player_signup_games")
+@dp.callback_query(F.data == "player_signup_games")
 async def show_games_for_signup(callback: types.CallbackQuery):
     user_id = callback.from_user.id
 
@@ -335,7 +335,7 @@ async def show_games_for_signup(callback: types.CallbackQuery):
     )
     await callback.answer()
     
-@router.callback_query(F.data.startswith("player_join_game_"))
+@dp.callback_query(F.data.startswith("player_join_game_"))
 async def player_join_game(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     game_id = int(callback.data.split("_")[-1])
