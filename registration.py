@@ -198,38 +198,38 @@ async def register_team_on_quizplease(
 
             async with aiohttp.ClientSession(cookie_jar=jar, headers=headers) as session:
                 # 1) прогрев /
-                log("[reg] warmup GET /")
-                async with session.get(f"{base}/", timeout=20, allow_redirects=True) as r0:
-                    t0 = await r0.text(errors="ignore")
-                    log(f"[reg] warmup status={r0.status} url={str(r0.url)} len={len(t0)}")
+                #log("[reg] warmup GET /")
+                #async with session.get(f"{base}/", timeout=20, allow_redirects=True) as r0:
+                #    t0 = await r0.text(errors="ignore")
+                #    log(f"[reg] warmup status={r0.status} url={str(r0.url)} len={len(t0)}")
 
-                    if _looks_like_yandex_captcha(r0, t0):
-                        await dump(
-                            {"attempt": attempt, "stage": "WARMUP", "url": f"{base}/", "headers": headers, "cookies": {"city":"krs"}},
-                            {"stage": "WARMUP", "status": r0.status, "final_url": str(r0.url), "headers": dict(r0.headers), "captcha": True},
-                            t0,
-                        )
-                        return {"ok": False, "antibot": True, "status": r0.status, "error": "Captcha on warmup", "captcha_url": str(r0.url),
-                                "request_file": request_path, "response_file": response_path}
+                #    if _looks_like_yandex_captcha(r0, t0):
+                #        await dump(
+                #            {"attempt": attempt, "stage": "WARMUP", "url": f"{base}/", "headers": headers, "cookies": {"city":"krs"}},
+                #            {"stage": "WARMUP", "status": r0.status, "final_url": str(r0.url), "headers": dict(r0.headers), "captcha": True},
+                #            t0,
+                #        )
+                #        return {"ok": False, "antibot": True, "status": r0.status, "error": "Captcha on warmup", "captcha_url": str(r0.url),
+                #                "request_file": request_path, "response_file": response_path}
 
-                await asyncio.sleep(random.uniform(1.5, 3.5))
+                #await asyncio.sleep(random.uniform(1.5, 3.5))
 
                 # 2) GET game-page
-                log(f"[reg] GET game-page {game_url}")
-                async with session.get(game_url, timeout=25, allow_redirects=True) as r1:
-                    t1 = await r1.text(errors="ignore")
-                    log(f"[reg] game-page status={r1.status} url={str(r1.url)} len={len(t1)}")
+                #log(f"[reg] GET game-page {game_url}")
+                #async with session.get(game_url, timeout=25, allow_redirects=True) as r1:
+                #    t1 = await r1.text(errors="ignore")
+                #    log(f"[reg] game-page status={r1.status} url={str(r1.url)} len={len(t1)}")
 
-                    if _looks_like_yandex_captcha(r1, t1):
-                        await dump(
-                            {"attempt": attempt, "stage": "GET_GAME", "url": game_url, "headers": headers, "cookies": {c.key: c.value for c in session.cookie_jar}},
-                            {"stage": "GET_GAME", "status": r1.status, "final_url": str(r1.url), "headers": dict(r1.headers), "captcha": True},
-                            t1,
-                        )
-                        return {"ok": False, "antibot": True, "status": r1.status, "error": "Captcha on game-page", "captcha_url": str(r1.url),
-                                "request_file": request_path, "response_file": response_path}
+                #    if _looks_like_yandex_captcha(r1, t1):
+                #        await dump(
+                #            {"attempt": attempt, "stage": "GET_GAME", "url": game_url, "headers": headers, "cookies": {c.key: c.value for c in session.cookie_jar}},
+                #            {"stage": "GET_GAME", "status": r1.status, "final_url": str(r1.url), "headers": dict(r1.headers), "captcha": True},
+                #            t1,
+                #        )
+                #        return {"ok": False, "antibot": True, "status": r1.status, "error": "Captcha on game-page", "captcha_url": str(r1.url),
+                #                "request_file": request_path, "response_file": response_path}
 
-                await asyncio.sleep(random.uniform(0.8, 1.8))
+                #await asyncio.sleep(random.uniform(0.8, 1.8))
 
                 # 3) POST регистрация (важно: referer на game-page)
                 post_headers = dict(headers)
