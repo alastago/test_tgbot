@@ -257,10 +257,9 @@ async def register_team(callback: types.CallbackQuery):
         email = team["email"] or "-"
         phone = team["phone"] or "+"
                 
-
         log(f"Пытаемся записать team_id={team_id} на game_id={game_id}")
         # Пытаемся зарегистрировать
-        await register_team_on_quizplease(
+        result = await register_team_on_quizplease(
             game_id,
             team_name,
             captain_name,
@@ -269,7 +268,17 @@ async def register_team(callback: types.CallbackQuery):
             players_count=5,
             comment="Тестовая запись. Команды не существует."
         )
-        await callback.message.answer("Команда записана!")
+        if result["ok"]:
+           await callback.message.answer("✅ Команда зарегистрирована!")
+        else:
+            await callback.message.answer(
+                f"❌ Не получилось.\n"
+                f"status={result['status']}\n"
+                f"antibot={result['antibot']}\n"
+                f"error={result['error']}\n"
+                f"req={result['request_file']}\n"
+                f"resp={result['response_file']}"
+            )
         await callback.answer()
 
     except Exception as e:
